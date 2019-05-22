@@ -1,0 +1,73 @@
+---
+title: "Natural Language Processor Exploratory Analysis"
+author: "Vince Protani"
+date: "5/20/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r warning=FALSE, message=FALSE}
+library(caret)
+library(dplyr)
+library(tidytext)
+
+setwd("C:/Users/vince/Desktop/natural_language_processor")
+```
+
+## Introduction
+
+This document explores the training data for a natural language processing model. Below are the libraries needed for the analysis.
+
+## Pre-processing
+
+The data has been processed into a tidy format organized by senteces per file. For each file, 25% of the lines are kept to preserve memory. Each line is then separated by sentences, and punctuation is removed. The script used to pre-process the data is read_data.R.
+
+## Data Exploration
+
+First we read and partition the data.
+
+```{r}
+dataDir <- "./tidy_data/"
+dataFileNames <- c("en_US.blogs.lines.txt", "en_US.news.lines.txt", "en_US.twitter.lines.txt")
+dataFiles <- paste(dataDir, dataFileNames, sep="")
+filesIndex <- 1:length(dataFiles)
+
+data <- lapply(dataFiles, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
+data <- lapply(data, function(x) data.frame(line=as.numeric(x$line), sentence=x$sentence, 
+                                            stringsAsFactors=FALSE))
+               
+inTrain <- lapply(filesIndex, function(x) createDataPartition(data[[x]]$line, p=0.7, list=FALSE))
+train <- lapply(filesIndex, function(x) as_tibble(data[[x]][inTrain[[x]], ]))
+test <- lapply(filesIndex, function(x) as_tibble(data[[x]][-inTrain[[x]], ]))
+
+numSentences <- tibble(set=c("train", "test"), blogs=c(NROW(train[[1]]), NROW(test[[1]])),
+                       news=c(NROW(train[[2]]), NROW(test[[2]])), twitter=c(NROW(train[[3]]), NROW(test[[3]])))
+numSentences <- numSentences %>% mutate(total=c(sum(numSentences[1,2:4]), sum(numSentences[2,2:4])))
+numSetences <- rbind(numSentences, c("total", 
+                                    sum(numSentences$blogs), sum(numSentences$news), 
+                                    sum(numSentences$twitter), sum(numSentences$total)))
+```
+
+```{r echo=FALSE}
+numSentences$blogs <- as.numeric(numSentences$blogs)
+numSentences$news <- as.numeric(numSentences$news)
+numSentences$twitter <- as.numeric(numSentences$twitter)
+numSentences$total <- as.numeric(numSentences$total)
+```
+
+The following table shows the number of sentences in the data for each corpus.
+
+```{r echo=FALSE}
+numSentences
+```
+
+We need to look at common ngrams in each of the files.
+
+```{r}
+trainTrigrams <- lapply(train, unnest_tokens, trigram, sentence, token="ngrams", n=3)
+trainTrigrams <- lapply(trainTrigrams, function(x) x[!is.na(x$trigram),])
+trainCountTri <- lapply(trainTrigrams, count, trigram)
+```
