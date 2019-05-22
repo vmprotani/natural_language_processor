@@ -13,8 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(caret)
 library(dplyr)
 library(tidytext)
-
-setwd("C:/Users/vince/Desktop/natural_language_processor")
+library(ggpubr)
 ```
 
 ## Introduction
@@ -25,11 +24,10 @@ This document explores the training data for a natural language processing model
 
 The data has been processed into a tidy format organized by senteces per file. For each file, 25% of the lines are kept to preserve memory. Each line is then separated by sentences, and punctuation is removed. The script used to pre-process the data is read_data.R.
 
-## Data Exploration
+##  Train and Test Sets
 
-First we read and partition the data.
-
-```{r}
+```{r echo=FALSE}
+dataNames <- c("blogs", "news", "twitter")
 dataDir <- "./tidy_data/"
 dataFileNames <- c("en_US.blogs.lines.txt", "en_US.news.lines.txt", "en_US.twitter.lines.txt")
 dataFiles <- paste(dataDir, dataFileNames, sep="")
@@ -49,29 +47,64 @@ numSentences <- numSentences %>% mutate(total=c(sum(numSentences[1,2:4]), sum(nu
 numSetences <- rbind(numSentences, c("total", 
                                     sum(numSentences$blogs), sum(numSentences$news), 
                                     sum(numSentences$twitter), sum(numSentences$total)))
-```
 
-```{r echo=FALSE}
 numSentences$blogs <- as.numeric(numSentences$blogs)
 numSentences$news <- as.numeric(numSentences$news)
 numSentences$twitter <- as.numeric(numSentences$twitter)
 numSentences$total <- as.numeric(numSentences$total)
-```
 
-The following table shows the number of sentences in the data for each corpus.
-
-```{r echo=FALSE}
 numSentences
 ```
 
-We need to look at common ngrams in each of the files.
+The training set holds roughly 70% of the tidy data, and the test set 30%.
 
-```{r}
-trainTrigrams <- lapply(train, unnest_tokens, trigram, sentence, token="ngrams", n=3)
-trainTrigrams <- lapply(trainTrigrams, function(x) x[!is.na(x$trigram),])
-trainCountTri <- lapply(trainTrigrams, count, trigram)
+## Ngrams of 3 Words
+
+```{r echo=FALSE}
+plotNgrams <- function(n) {
+  trainNgrams <- lapply(train, unnest_tokens, ngram, sentence, token="ngrams", n=n)
+  trainNgrams <- lapply(trainNgrams, function(x) x[!is.na(x$ngram), ])
+  trainCountN <- lapply(trainNgrams, count, ngram, sort=TRUE)
+  
+  trainTopN <- lapply(trainCountN, function(x) x[1:10, ])
+  trainTopN <- lapply(filesIndex, function(x) {
+    trainTopN[[x]] %>% mutate(file=dataFileNames[x], ngram=reorder(ngram, n))
+  })
+  
+  p <- lapply(filesIndex, function(x) {
+    ggplot(trainTopN[[x]], aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
+      xlab(NULL) + ylab(NULL) + ggtitle(dataNames[[x]]) + theme(legend.title=element_blank())
+  })
+  
+  combinedLevels <- union(levels(trainTopN[[1]]$ngram), levels(trainTopN[[2]]$ngram)) %>%
+    union(levels(trainTopN[[3]]$ngram))
+  trainTopN <- lapply(trainTopN, mutate, ngram=factor(ngram, levels=combinedLevels), 
+                                                      file=NULL) %>% bind_rows()
+  trainTopAll <- aggregate(n~ngram, trainTopN, sum) %>% mutate(ngram=reorder(ngram, n))
+  trainTopAll <- trainTopAll[1:10, ]
+
+  left <- ggplot(trainTopAll, aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
+    xlab(NULL) + ylab(NULL) + ggtitle("total") + theme(legend.title=element_blank())
+  right <- ggarrange(p[[1]], p[[2]], p[[3]], ncol=1, nrow=3)
+  
+  ggarrange(left, right, ncol=2, nrow=1)
+}
+```
+
+```{r echo=FALSE}
+#f <- plotNgrams(3)
 
 ## separate trigrams into words for searchability
 # trainTrigrams %>% separate(col=trigram, into=c("first", "second", "third"))
 ## could also gsub first two words with blank and return the result
+```
+
+* The blogs and twitter corpuses have ngrams with much higher frecuencies than news.
+
+* Blogs and news share a few of the same ngrams.
+
+### Ngrams of 2 Words
+
+```{r echo=FALSE}
+f <- plotNgrams(2)
 ```
