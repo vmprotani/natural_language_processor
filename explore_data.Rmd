@@ -70,4 +70,8 @@ We need to look at common ngrams in each of the files.
 trainTrigrams <- lapply(train, unnest_tokens, trigram, sentence, token="ngrams", n=3)
 trainTrigrams <- lapply(trainTrigrams, function(x) x[!is.na(x$trigram),])
 trainCountTri <- lapply(trainTrigrams, count, trigram)
+
+## separate trigrams into words for searchability
+# trainTrigrams %>% separate(col=trigram, into=c("first", "second", "third"))
+## could also gsub first two words with blank and return the result
 ```
