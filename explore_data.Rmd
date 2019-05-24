@@ -16,6 +16,10 @@ library(tidytext)
 library(ggpubr)
 ```
 
+```{r echo=FALSE}
+set.seed(20190521)
+```
+
 ## Introduction
 
 This document explores the training data for a natural language processing model. Below are the libraries needed for the analysis.
@@ -34,17 +38,16 @@ dataFiles <- paste(dataDir, dataFileNames, sep="")
 filesIndex <- 1:length(dataFiles)
 
 data <- lapply(dataFiles, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
-data <- lapply(data, function(x) data.frame(line=as.numeric(x$line), sentence=x$sentence, 
-                                            stringsAsFactors=FALSE))
+data <- lapply(data, function(x) tibble(sentence=x$sentence))
                
-inTrain <- lapply(filesIndex, function(x) createDataPartition(data[[x]]$line, p=0.7, list=FALSE))
+inTrain <- lapply(filesIndex, function(x) createDataPartition(1:NROW(data[[x]]), p=0.7, list=FALSE))
 train <- lapply(filesIndex, function(x) as_tibble(data[[x]][inTrain[[x]], ]))
 test <- lapply(filesIndex, function(x) as_tibble(data[[x]][-inTrain[[x]], ]))
 
 numSentences <- tibble(set=c("train", "test"), blogs=c(NROW(train[[1]]), NROW(test[[1]])),
                        news=c(NROW(train[[2]]), NROW(test[[2]])), twitter=c(NROW(train[[3]]), NROW(test[[3]])))
 numSentences <- numSentences %>% mutate(total=c(sum(numSentences[1,2:4]), sum(numSentences[2,2:4])))
-numSetences <- rbind(numSentences, c("total", 
+numSentences <- rbind(numSentences, c("total", 
                                     sum(numSentences$blogs), sum(numSentences$news), 
                                     sum(numSentences$twitter), sum(numSentences$total)))
 
@@ -58,7 +61,7 @@ numSentences
 
 The training set holds roughly 70% of the tidy data, and the test set 30%.
 
-## Ngrams of 3 Words
+## 2-Word Ngrams
 
 ```{r echo=FALSE}
 plotNgrams <- function(n) {
@@ -73,7 +76,7 @@ plotNgrams <- function(n) {
   
   p <- lapply(filesIndex, function(x) {
     ggplot(trainTopN[[x]], aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
-      xlab(NULL) + ylab(NULL) + ggtitle(dataNames[[x]]) + theme(legend.title=element_blank())
+      xlab(NULL) + ylab(NULL) + ggtitle(dataNames[[x]]) + theme(legend.position="none")
   })
   
   combinedLevels <- union(levels(trainTopN[[1]]$ngram), levels(trainTopN[[2]]$ngram)) %>%
@@ -81,10 +84,9 @@ plotNgrams <- function(n) {
   trainTopN <- lapply(trainTopN, mutate, ngram=factor(ngram, levels=combinedLevels), 
                                                       file=NULL) %>% bind_rows()
   trainTopAll <- aggregate(n~ngram, trainTopN, sum) %>% mutate(ngram=reorder(ngram, n))
-  trainTopAll <- trainTopAll[1:10, ]
 
   left <- ggplot(trainTopAll, aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
-    xlab(NULL) + ylab(NULL) + ggtitle("total") + theme(legend.title=element_blank())
+    xlab(NULL) + ylab(NULL) + ggtitle("all") + theme(legend.position="none")
   right <- ggarrange(p[[1]], p[[2]], p[[3]], ncol=1, nrow=3)
   
   ggarrange(left, right, ncol=2, nrow=1)
@@ -92,19 +94,20 @@ plotNgrams <- function(n) {
 ```
 
 ```{r echo=FALSE}
-#f <- plotNgrams(3)
-
+f <- plotNgrams(2)
+f
 ## separate trigrams into words for searchability
 # trainTrigrams %>% separate(col=trigram, into=c("first", "second", "third"))
 ## could also gsub first two words with blank and return the result
 ```
 
+### 3-Word Ngrams
+
+```{r echo=FALSE}
+f <- plotNgrams(3)
+f
+```
+
 * The blogs and twitter corpuses have ngrams with much higher frecuencies than news.
 
 * Blogs and news share a few of the same ngrams.
-
-### Ngrams of 2 Words
-
-```{r echo=FALSE}
-f <- plotNgrams(2)
-```
