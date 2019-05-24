@@ -16,7 +16,7 @@ lines <- lapply(cons, readLines, encoding="UTF-8", skipNul=TRUE)
 lineSamples <- lapply(lines, function(x) x[rbinom(length(x), 1, 0.25)==1])
 
 # separate lines into sentences
-data <- lapply(lineSamples, function(x) tibble(line=1:length(x), text=x))
+data <- lapply(lineSamples, function(x) tibble(text=x))
 sentences <- lapply(data, unnest_tokens, output=sentence, input=text, token="sentences")
 
 # remove lines with uncommon abbreviations
@@ -25,7 +25,7 @@ sentences <- lapply(sentences,
 
 # remove punctuation
 sentences <- lapply(sentences, 
-                    function(x) tibble(line=x$line, sentence=gsub("(,|\\.|!|?)+", "", x$sentence)))
+                    function(x) tibble(sentence=gsub("(,|\\.|!|?)+", "", x$sentence)))
 
 # remove any lines with symbols
 sentences <- lapply(sentences, function(x) x[!grepl("[[:punct:]]", x$sentence), ])
