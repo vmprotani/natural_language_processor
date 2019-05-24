@@ -61,8 +61,6 @@ numSentences
 
 The training set holds roughly 70% of the tidy data, and the test set 30%.
 
-## 2-Word Ngrams
-
 ```{r echo=FALSE}
 plotNgrams <- function(n) {
   trainNgrams <- lapply(train, unnest_tokens, ngram, sentence, token="ngrams", n=n)
@@ -89,7 +87,9 @@ plotNgrams <- function(n) {
     xlab(NULL) + ylab(NULL) + ggtitle("all") + theme(legend.position="none")
   right <- ggarrange(p[[1]], p[[2]], p[[3]], ncol=1, nrow=3)
   
-  ggarrange(left, right, ncol=2, nrow=1)
+  annotate_figure(
+    ggarrange(left, right, ncol=2, nrow=1) + theme(plot.margin=unit(c(0.3,0,0,0), "cm")),
+    fig.lab=paste(n, "-word ngrams", sep=""), fig.lab.pos="top", fig.lab.face="bold")
 }
 ```
 
@@ -100,8 +100,6 @@ f
 # trainTrigrams %>% separate(col=trigram, into=c("first", "second", "third"))
 ## could also gsub first two words with blank and return the result
 ```
-
-### 3-Word Ngrams
 
 ```{r echo=FALSE}
 f <- plotNgrams(3)
