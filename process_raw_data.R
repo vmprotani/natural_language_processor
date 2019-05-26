@@ -23,16 +23,22 @@ sentences <- lapply(data, unnest_tokens, output=sentence, input=text, token="sen
 sentences <- lapply(sentences, 
                     function(x) x[!grepl("(approx|est|min|misc|mr|mrs|ms|no|temp|vs)\\.", x$sentence), ])
 
-# remove punctuation
-sentences <- lapply(sentences, 
-                    function(x) tibble(sentence=gsub("(,|\\.|!|?)+", "", x$sentence)))
+# remove punctuation and common symbols
+sentences <- lapply(sentences, function(x) tibble(sentence=gsub("(,|\\.|!|?|\\|/|~)+", "", x$sentence)))
 
-# remove any lines with symbols
-sentences <- lapply(sentences, function(x) x[!grepl("[[:punct:]]", x$sentence), ])
-sentences <- lapply(sentences, function(x) x[!grepl("".+"", x$sentence), ])
+# remove any lines with uncommon symbols
+sentences <- lapply(sentences, function(x) x[!grepl("[^[:alnum:] \'-]", x$sentence), ])
 
-# remove lines with only one word
-sentences <- lapply(sentences, function(x) x[grepl("([A-Za-z]+ ){1,}", x$sentence), ])
+# remove lines with only less than 4 words
+sentences <- lapply(sentences, function(x) x[grepl("([A-Za-z\']+ ){3,}", x$sentence), ])
+
+# remove lines with profanity
+profanity <- readLines("./profanity_data/en.txt", encoding="UTF-8", skipNul=TRUE)
+profanityPattern <- paste(profanity, collapse="|")
+sentences <- lapply(sentences, function(x) x[!grepl(profanityPattern, x$sentence),])
+
+# remove lines with one-letter words that are not "a" or "I"
+sentences <- lapply(sentences, function(x) x[!grepl("(^[^ai] )|( [^ai] )|( [^ai]$)", x$sentence),])
 
 # write data to files
 outputFiles <- paste("./tidy_data/", 
