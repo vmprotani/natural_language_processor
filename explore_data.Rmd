@@ -15,9 +15,6 @@ library(dplyr)
 library(tidytext)
 library(ggpubr)
 library(tidyr)
-```
-
-```{r echo=FALSE}
 set.seed(20190521)
 ```
 
@@ -33,57 +30,12 @@ The data has been processed into a tidy format organized by senteces per file. F
 
 *(Data reading and ngram manipulation is not presented here to save space. The code for each section can be seen in the Rmd file.)*
 
-```{r echo=FALSE}
-dataNames <- c("blogs", "news", "twitter")
-dataDir <- "./tidy_data/"
-dataFileNames <- c("en_US.blogs.lines.txt", "en_US.news.lines.txt", "en_US.twitter.lines.txt")
-dataFiles <- paste(dataDir, dataFileNames, sep="")
-filesIndex <- 1:length(dataFiles)
-
-data <- lapply(dataFiles, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
-data <- lapply(data, function(x) tibble(sentence=x$sentence))
+```{r}
+source("read_tidy_data.R")
 ```
 
-```{r echo=FALSE}
-createNgrams <- function(n) {
-  # separate ngrams in sentences
-  ngrams <- lapply(data, unnest_tokens, ngram, sentence, token="ngrams", n=n)
-  ngrams <- lapply(ngrams, function(x) x[!is.na(x$ngram), ])
-  ngramCounts <- lapply(ngrams, count, ngram, sort=TRUE)
-  
-  # get most common ngrams
-  topNgrams <- lapply(ngramCounts, function(x) x[1:10, ])
-  topNgrams <- lapply(filesIndex, function(x) {
-    topNgrams[[x]] %>% mutate(file=dataFileNames[x], ngram=reorder(ngram, n))
-  })
-  
-  # create plots for file-separated ngrams
-  p <- lapply(filesIndex, function(x) {
-    ggplot(topNgrams[[x]], aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
-      xlab(NULL) + ylab(NULL) + ggtitle(dataNames[[x]]) + theme(legend.position="none")
-  })
-  
-  # combine ngrams across files
-  combinedLevels <- union(levels(topNgrams[[1]]$ngram), levels(topNgrams[[2]]$ngram)) %>%
-    union(levels(topNgrams[[3]]$ngram))
-  topNgrams <- lapply(topNgrams, mutate, ngram=factor(ngram, levels=combinedLevels), 
-                                                      file=NULL) %>% bind_rows()
-  topNgramsTotal <- aggregate(n~ngram, topNgrams, sum) %>% mutate(ngram=reorder(ngram, n))
-
-  # create figure with ngram plots
-  left <- ggplot(topNgramsTotal, aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
-    xlab(NULL) + ylab(NULL) + ggtitle("all") + theme(legend.position="none")
-  right <- ggarrange(p[[1]], p[[2]], p[[3]], ncol=1, nrow=3)
-  
-  # separate ngrams into columns
-  numWords <- 1:n
-  ngramSep <- bind_rows(ngramCounts) %>% separate("ngram", paste("word", numWords, sep=""), sep=" ")
-  
-  # return separated ngrams and figure
-  ngram2 <- list(count=ngramSep, fig=annotate_figure(
-    ggarrange(left, right, ncol=2, nrow=1) + theme(plot.margin=unit(c(0.3,0,0,0), "cm")),
-    fig.lab=paste(n, "-word ngrams", sep=""), fig.lab.pos="top", fig.lab.face="bold"))
-}
+```{r}
+source("create_ngrams.R")
 ```
 
 Our goal here is to predict text given three words. We inspect ngrams of two, three, and four words that could be used to predict a word given user input. In this case, the input would be mapped to an ngram with one more word than the input has. For example, if the input has three words, ngrams of four words would be searched for a prediction. However, it is helpful to look at ngrams of two and three to broaden our search for a prediction.
@@ -152,31 +104,7 @@ One exception, however, is that ngrams with numbers as any words are removed. Nu
 The data is separated into a training and test sets to prepare the model.
 
 ```{r}
-hasNum <- function(x) { grepl("[[:digit:]]+", x) }
-
-sort2 <- function(x) { 
-  x %>% filter(!hasNum(word1) & !hasNum(word2)) %>% group_by(word1) %>% count(word2) %>%
-    arrange(word1, word2, desc(n))
-}
-inTrain2 <- createDataPartition(1:NROW(ngram2$count), p=0.7, list=FALSE)
-train2 <- sort2(ngram2$count[inTrain2,])
-test2 <- sort2(ngram2$count[-inTrain2,])
-
-sort3 <- function(x) {
-  x %>% filter(!hasNum(word1) & !hasNum(word2) & !hasNum(word3)) %>% 
-    group_by(word1, word2) %>% count(word3) %>% arrange(word1, word2, desc(n))
-}
-inTrain3 <- createDataPartition(1:NROW(ngram3$count), p=0.7, list=FALSE)
-train3 <- sort3(ngram3$count[inTrain3,])
-test3 <- sort3(ngram3$count[-inTrain3,])
-
-sort4 <- function(x) {
-  x %>% filter(!hasNum(word1) & !hasNum(word2) & !hasNum(word3) & !hasNum(word4)) %>% 
-    group_by(word1, word2, word3) %>% count(word4) %>% arrange(word1, word2, word3, desc(n))
-}
-inTrain4 <- createDataPartition(1:NROW(ngram4$count), p=0.7, list=FALSE)
-train4 <- sort4(ngram4$count[inTrain4,])
-test4 <- sort4(ngram4$count[-inTrain4,])
+source("partition_ngrams.R")
 
 sets <- tibble(set=c("train", "test"), n2=c(NROW(train2), NROW(test2)), 
                n3=c(NROW(train3), NROW(test3)), 
@@ -188,10 +116,10 @@ sets %>% rbind(c("total", colSums(sets[,2:5])))
 The training set across all ngrams constitutes roughly 70% of the data, and the other 30% is in the test set. In total, we have roughly 13 million ngrams to build and verify the model. This data is written to files to be used in the prediction app.
 
 ```{r}
-write.table(train2, file="./ngrams/train2.txt", sep="\t")
-write.table(test2, file="./ngrams/test2.txt", sep="\t")
-write.table(train3, file="./ngrams/train3.txt", sep="\t")
-write.table(test3, file="./ngrams/test3.txt", sep="\t")
-write.table(train4, file="./ngrams/train4.txt", sep="\t")
-write.table(test4, file="./ngrams/test4.txt", sep="\t")
+write.table(train2, file="./ngrams/train2.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(test2, file="./ngrams/test2.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(train3, file="./ngrams/train3.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(test3, file="./ngrams/test3.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(train4, file="./ngrams/train4.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(test4, file="./ngrams/test4.txt", sep="\t", row.names=FALSE, quote=FALSE)
 ```
