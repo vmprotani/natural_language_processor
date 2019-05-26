@@ -14,6 +14,7 @@ library(caret)
 library(dplyr)
 library(tidytext)
 library(ggpubr)
+library(tidyr)
 ```
 
 ```{r echo=FALSE}
@@ -28,7 +29,9 @@ This document explores the training data for a natural language processing model
 
 The data has been processed into a tidy format organized by senteces per file. For each file, 25% of the lines are kept to preserve memory. Each line is then separated by sentences, and punctuation is removed. The script used to pre-process the data is read_data.R.
 
-##  Train and Test Sets
+##  Exploratory Analysis
+
+*(Data reading and ngram manipulation is not presented here to save space. The code for each section can be seen in the Rmd file.)*
 
 ```{r echo=FALSE}
 dataNames <- c("blogs", "news", "twitter")
@@ -39,73 +42,156 @@ filesIndex <- 1:length(dataFiles)
 
 data <- lapply(dataFiles, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
 data <- lapply(data, function(x) tibble(sentence=x$sentence))
-               
-inTrain <- lapply(filesIndex, function(x) createDataPartition(1:NROW(data[[x]]), p=0.7, list=FALSE))
-train <- lapply(filesIndex, function(x) as_tibble(data[[x]][inTrain[[x]], ]))
-test <- lapply(filesIndex, function(x) as_tibble(data[[x]][-inTrain[[x]], ]))
-
-numSentences <- tibble(set=c("train", "test"), blogs=c(NROW(train[[1]]), NROW(test[[1]])),
-                       news=c(NROW(train[[2]]), NROW(test[[2]])), twitter=c(NROW(train[[3]]), NROW(test[[3]])))
-numSentences <- numSentences %>% mutate(total=c(sum(numSentences[1,2:4]), sum(numSentences[2,2:4])))
-numSentences <- rbind(numSentences, c("total", 
-                                    sum(numSentences$blogs), sum(numSentences$news), 
-                                    sum(numSentences$twitter), sum(numSentences$total)))
-
-numSentences$blogs <- as.numeric(numSentences$blogs)
-numSentences$news <- as.numeric(numSentences$news)
-numSentences$twitter <- as.numeric(numSentences$twitter)
-numSentences$total <- as.numeric(numSentences$total)
-
-numSentences
 ```
 
-The training set holds roughly 70% of the tidy data, and the test set 30%.
-
 ```{r echo=FALSE}
-plotNgrams <- function(n) {
-  trainNgrams <- lapply(train, unnest_tokens, ngram, sentence, token="ngrams", n=n)
-  trainNgrams <- lapply(trainNgrams, function(x) x[!is.na(x$ngram), ])
-  trainCountN <- lapply(trainNgrams, count, ngram, sort=TRUE)
+createNgrams <- function(n) {
+  # separate ngrams in sentences
+  ngrams <- lapply(data, unnest_tokens, ngram, sentence, token="ngrams", n=n)
+  ngrams <- lapply(ngrams, function(x) x[!is.na(x$ngram), ])
+  ngramCounts <- lapply(ngrams, count, ngram, sort=TRUE)
   
-  trainTopN <- lapply(trainCountN, function(x) x[1:10, ])
-  trainTopN <- lapply(filesIndex, function(x) {
-    trainTopN[[x]] %>% mutate(file=dataFileNames[x], ngram=reorder(ngram, n))
+  # get most common ngrams
+  topNgrams <- lapply(ngramCounts, function(x) x[1:10, ])
+  topNgrams <- lapply(filesIndex, function(x) {
+    topNgrams[[x]] %>% mutate(file=dataFileNames[x], ngram=reorder(ngram, n))
   })
   
+  # create plots for file-separated ngrams
   p <- lapply(filesIndex, function(x) {
-    ggplot(trainTopN[[x]], aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
+    ggplot(topNgrams[[x]], aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
       xlab(NULL) + ylab(NULL) + ggtitle(dataNames[[x]]) + theme(legend.position="none")
   })
   
-  combinedLevels <- union(levels(trainTopN[[1]]$ngram), levels(trainTopN[[2]]$ngram)) %>%
-    union(levels(trainTopN[[3]]$ngram))
-  trainTopN <- lapply(trainTopN, mutate, ngram=factor(ngram, levels=combinedLevels), 
+  # combine ngrams across files
+  combinedLevels <- union(levels(topNgrams[[1]]$ngram), levels(topNgrams[[2]]$ngram)) %>%
+    union(levels(topNgrams[[3]]$ngram))
+  topNgrams <- lapply(topNgrams, mutate, ngram=factor(ngram, levels=combinedLevels), 
                                                       file=NULL) %>% bind_rows()
-  trainTopAll <- aggregate(n~ngram, trainTopN, sum) %>% mutate(ngram=reorder(ngram, n))
+  topNgramsTotal <- aggregate(n~ngram, topNgrams, sum) %>% mutate(ngram=reorder(ngram, n))
 
-  left <- ggplot(trainTopAll, aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
+  # create figure with ngram plots
+  left <- ggplot(topNgramsTotal, aes(x=ngram, y=n, fill=n)) + geom_col() + coord_flip() +
     xlab(NULL) + ylab(NULL) + ggtitle("all") + theme(legend.position="none")
   right <- ggarrange(p[[1]], p[[2]], p[[3]], ncol=1, nrow=3)
   
-  annotate_figure(
+  # separate ngrams into columns
+  numWords <- 1:n
+  ngramSep <- bind_rows(ngramCounts) %>% separate("ngram", paste("word", numWords, sep=""), sep=" ")
+  
+  # return separated ngrams and figure
+  ngram2 <- list(count=ngramSep, fig=annotate_figure(
     ggarrange(left, right, ncol=2, nrow=1) + theme(plot.margin=unit(c(0.3,0,0,0), "cm")),
-    fig.lab=paste(n, "-word ngrams", sep=""), fig.lab.pos="top", fig.lab.face="bold")
+    fig.lab=paste(n, "-word ngrams", sep=""), fig.lab.pos="top", fig.lab.face="bold"))
 }
 ```
 
-```{r echo=FALSE}
-f <- plotNgrams(2)
-f
-## separate trigrams into words for searchability
-# trainTrigrams %>% separate(col=trigram, into=c("first", "second", "third"))
-## could also gsub first two words with blank and return the result
+Our goal here is to predict text given three words. We inspect ngrams of two, three, and four words that could be used to predict a word given user input. In this case, the input would be mapped to an ngram with one more word than the input has. For example, if the input has three words, ngrams of four words would be searched for a prediction. However, it is helpful to look at ngrams of two and three to broaden our search for a prediction.
+
+```{r}
+ngram2 <- createNgrams(2)
+
+stopFreq2 <- ngram2$count %>% group_by(word1) %>% 
+  summarize(stop=sum(word2 %in% stop_words$word), reg=sum(!stop), 
+            stopRatio=stop/(stop+reg)) %>% ungroup() %>%
+  summarize(avg=mean(stopRatio))
+regFreq2 <- 1-stopFreq2$avg
+
+ngram2$fig
 ```
 
-```{r echo=FALSE}
-f <- plotNgrams(3)
-f
+We can see the most frequent pairs of two words are very common phrases, and they do not differ much between the sources. We can also see the frequency of the bigrams from blogs is significantly higher than from news and twitter, whch dominates the frequent phrases over all of the sources. 
+
+```{r}
+ngram3 <- createNgrams(3)
+
+stopFreq3 <- ngram3$count %>% group_by(word1, word2) %>% 
+  summarize(stop=sum(word3 %in% stop_words$word), reg=sum(!stop), 
+            stopRatio=stop/(stop+reg)) %>% ungroup() %>%
+  summarize(avg=mean(stopRatio))
+regFreq3 <- 1-stopFreq3$avg
+
+ngram3$fig
 ```
 
-* The blogs and twitter corpuses have ngrams with much higher frecuencies than news.
+The ngrams of three words involve slightly different phrases, but similarly to the pairs of two words, the final word in almost all phrases is a stop word. Unlike the ngrams of two words, the most frequent ngrams of three are numerically comparable between blogs and twitter while news falls behind.
 
-* Blogs and news share a few of the same ngrams.
+```{r}
+ngram4 <- createNgrams(4)
+
+stopFreq4 <- ngram4$count %>% group_by(word1, word2, word3) %>% 
+  summarize(stop=sum(word4 %in% stop_words$word), reg=sum(!stop), 
+            stopRatio=stop/(stop+reg)) %>% ungroup() %>%
+  summarize(avg=mean(stopRatio))
+regFreq4 <- 1-stopFreq4$avg
+
+ngram4$fig
+```
+
+From first glance, there seems to be more phrases in the 4-word ngrams that end in a non-stop word. While these have a richer diversity of words, these pairings appear much less frequently than the 2- and 3-word ngrams.
+
+```{r}
+freqDat <- tibble(frequency=c(stopFreq2, regFreq2, stopFreq3, regFreq3, stopFreq4, regFreq4),
+                  n=c("2", "2", "3", "3", "4", "4"), 
+                  wordType=c("stop", "regular", "stop", "regular", "stop", "regular"))
+ggplot() + geom_bar(aes(y=frequency, x=n, fill=wordType), data=freqDat, stat="identity") + labs(title="likelihood of ngram's final word classifications", fill="type of words", x="words in ngrams")
+```
+
+Overall, we can see that for any given ngram, it is much more probable that the last word is a stop word rather than a regular word. This intuitively makes sense because stop words are, by definition, the most common words.
+
+## Planned Model
+
+I plan to have my model accept a phrase, search the corresponding set of ngrams, and return the three most frequent last words of the ngram. For example, if the user inputs three words, the model will inspect the table of 4-word ngrams, collect all rows in which the first three words match the user's input, and return the three most common words that follow those.
+
+I would also like to incorporate smaller ngram usage if the search for the original input fails. Continuing with the above example, if the three words the user submitted cannot be found, the last two words of that input will be searched in the 3-word ngrams data, and the three most common third words for that pair of words are returned. Ultimately, the purpose is to return a list of the three most probable words for the prediction by inspecting the frequency of words in ngrams involving the user's input.
+
+Also, seeing that the overall frequency of phrases ending in stop words is high, I do not plan on differentiating ruling them out for the prediction model. It makes sense to predict using stop words, because otherwise the prediction would be ignoring the words most likely to be used. 
+
+One exception, however, is that ngrams with numbers as any words are removed. Numbers are much less standard than words (i.e., someone may write 14, 90, or 122 weeks...), so there isn't much point to including them in any prediction. Removing them also frees up some memory in hopes to optimize the prediction model.
+
+The data is separated into a training and test sets to prepare the model.
+
+```{r}
+hasNum <- function(x) { grepl("[[:digit:]]+", x) }
+
+sort2 <- function(x) { 
+  x %>% filter(!hasNum(word1) & !hasNum(word2)) %>% group_by(word1) %>% count(word2) %>%
+    arrange(word1, word2, desc(n))
+}
+inTrain2 <- createDataPartition(1:NROW(ngram2$count), p=0.7, list=FALSE)
+train2 <- sort2(ngram2$count[inTrain2,])
+test2 <- sort2(ngram2$count[-inTrain2,])
+
+sort3 <- function(x) {
+  x %>% filter(!hasNum(word1) & !hasNum(word2) & !hasNum(word3)) %>% 
+    group_by(word1, word2) %>% count(word3) %>% arrange(word1, word2, desc(n))
+}
+inTrain3 <- createDataPartition(1:NROW(ngram3$count), p=0.7, list=FALSE)
+train3 <- sort3(ngram3$count[inTrain3,])
+test3 <- sort3(ngram3$count[-inTrain3,])
+
+sort4 <- function(x) {
+  x %>% filter(!hasNum(word1) & !hasNum(word2) & !hasNum(word3) & !hasNum(word4)) %>% 
+    group_by(word1, word2, word3) %>% count(word4) %>% arrange(word1, word2, word3, desc(n))
+}
+inTrain4 <- createDataPartition(1:NROW(ngram4$count), p=0.7, list=FALSE)
+train4 <- sort4(ngram4$count[inTrain4,])
+test4 <- sort4(ngram4$count[-inTrain4,])
+
+sets <- tibble(set=c("train", "test"), n2=c(NROW(train2), NROW(test2)), 
+               n3=c(NROW(train3), NROW(test3)), 
+               n4=c(NROW(train4), NROW(test4)))
+sets <- sets %>% mutate(total=rowSums(sets[,2:4]))
+sets %>% rbind(c("total", colSums(sets[,2:5])))
+```
+
+The training set across all ngrams constitutes roughly 70% of the data, and the other 30% is in the test set. In total, we have roughly 13 million ngrams to build and verify the model. This data is written to files to be used in the prediction app.
+
+```{r}
+write.table(train2, file="./ngrams/train2.txt", sep="\t")
+write.table(test2, file="./ngrams/test2.txt", sep="\t")
+write.table(train3, file="./ngrams/train3.txt", sep="\t")
+write.table(test3, file="./ngrams/test3.txt", sep="\t")
+write.table(train4, file="./ngrams/train4.txt", sep="\t")
+write.table(test4, file="./ngrams/test4.txt", sep="\t")
+```
