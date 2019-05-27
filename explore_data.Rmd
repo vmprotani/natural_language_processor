@@ -121,23 +121,13 @@ There are a few modifications to the sets of ngrams. Ngrams containing the follo
 
 After all these cases are removed, for each set of ngrams, the most frequent cases are kept, and the rest are removed. Specifically, the three most frequent final words for any ngram are kept or all if there are less than 3; since the prediction app will only display three words, there do not need to be more than 3 options maintained for any ngram. These removals optimize the amount of memory used and remove foreseeable edge cases in predictions.
 
-The data is separated into a training and test sets to prepare the model.
-
 ```{r}
-sets <- tibble(set=c("train", "test"), n2=c(NROW(train2), NROW(test2)), 
-               n3=c(NROW(train3), NROW(test3)), 
-               n4=c(NROW(train4), NROW(test4)))
-sets <- sets %>% mutate(total=rowSums(sets[,2:4]))
-sets %>% rbind(c("total", colSums(sets[,2:5])))
+sets <- tibble(n2=NROW(filtered2), n3=NROW(filtered3), n4=NROW(filtered4))
+sets %>% mutate(total=rowSums(sets))
 ```
 
-The training set across all ngrams constitutes roughly 60% of the data, and the other 40% is in the test set. In total, we have roughly 13 million ngrams to build and verify the model. This data is written to files to be used in the prediction app.
-
 ```{r}
-write.table(train2, file="./ngrams/train2.txt", sep="\t", row.names=FALSE, quote=FALSE)
-write.table(test2, file="./ngrams/test2.txt", sep="\t", row.names=FALSE, quote=FALSE)
-write.table(train3, file="./ngrams/train3.txt", sep="\t", row.names=FALSE, quote=FALSE)
-write.table(test3, file="./ngrams/test3.txt", sep="\t", row.names=FALSE, quote=FALSE)
-write.table(train4, file="./ngrams/train4.txt", sep="\t", row.names=FALSE, quote=FALSE)
-write.table(test4, file="./ngrams/test4.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(filtered2, file="./ngrams/ngrams2.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(filtered3, file="./ngrams/ngrams3.txt", sep="\t", row.names=FALSE, quote=FALSE)
+write.table(filtered4, file="./ngrams/ngrams4.txt", sep="\t", row.names=FALSE, quote=FALSE)
 ```
