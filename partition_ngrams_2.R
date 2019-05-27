@@ -6,5 +6,5 @@ sort2 <- function(x) {
   inner_join(set2, totals2, by="word2") %>% arrange(word1, desc(n.x), desc(n.y), word2)  %>%
     ddply(.(word1), function(x) x[1:min(3, NROW(x)),])
 }
-filtered2 <- sort2(ngram2$count)
+filtered2 <- sort2(ngram2$count[rbinom(ngram2$count, 1, prob=0.6)==1,])
 rm(ngram2)
