@@ -2,10 +2,10 @@ createNgrams <- function(n) {
   # separate ngrams in sentences
   ngrams <- lapply(data, unnest_tokens, ngram, sentence, token="ngrams", n=n)
   ngrams <- lapply(ngrams, function(x) x[!is.na(x$ngram), ])
-  ngramCounts <- lapply(ngrams, count, ngram, sort=TRUE)
+  ngrams <- lapply(ngrams, count, ngram, sort=TRUE)
   
   # get most common ngrams
-  topNgrams <- lapply(ngramCounts, function(x) x[1:10, ])
+  topNgrams <- lapply(ngrams, function(x) x[1:10, ])
   topNgrams <- lapply(filesIndex, function(x) {
     topNgrams[[x]] %>% mutate(file=dataFileNames[x], ngram=reorder(ngram, n))
   })
@@ -19,8 +19,8 @@ createNgrams <- function(n) {
   # combine ngrams across files
   combinedLevels <- union(levels(topNgrams[[1]]$ngram), levels(topNgrams[[2]]$ngram)) %>%
     union(levels(topNgrams[[3]]$ngram))
-  topNgrams <- lapply(topNgrams, mutate, ngram=factor(ngram, levels=combinedLevels), 
-                      file=NULL) %>% bind_rows()
+  topNgrams <- lapply(topNgrams, mutate, ngram=factor(ngram, levels=combinedLevels), file=NULL) %>%
+    bind_rows()
   topNgramsTotal <- aggregate(n~ngram, topNgrams, sum) %>% mutate(ngram=reorder(ngram, n))
   
   # create figure with ngram plots
@@ -30,7 +30,7 @@ createNgrams <- function(n) {
   
   # separate ngrams into columns
   numWords <- 1:n
-  ngramSep <- bind_rows(ngramCounts) %>% separate("ngram", paste("word", numWords, sep=""), sep=" ")
+  ngramSep <- bind_rows(ngrams) %>% separate("ngram", paste("word", numWords, sep=""), sep=" ")
   
   # return separated ngrams and figure
   ngram2 <- list(count=ngramSep, fig=annotate_figure(
