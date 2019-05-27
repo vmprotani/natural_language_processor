@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r warning=FALSE, message=FALSE}
 library(caret)
+library(plyr)
 library(dplyr)
 library(tidytext)
 library(ggpubr)
@@ -28,14 +29,13 @@ The data has been processed into a tidy format organized by senteces per file. F
 
 ##  Exploratory Analysis
 
-*(Data reading and ngram manipulation is not presented here to save space. The code for each section can be seen in the Rmd file.)*
+*(Data reading and ngram manipulation is not presented here to save space. The sourced code can be found in its respective file.)*
 
 ```{r}
 source("read_tidy_data.R")
-```
-
-```{r}
 source("create_ngrams.R")
+isWord <- function(x) { grepl("^[a-z\']+$", x) }
+vowelRepeats <- function(x) { grepl("(a|i|u){2,}|(e|o){3,}", x) }
 ```
 
 Our goal here is to predict text given three words. We inspect ngrams of two, three, and four words that could be used to predict a word given user input. In this case, the input would be mapped to an ngram with one more word than the input has. For example, if the input has three words, ngrams of four words would be searched for a prediction. However, it is helpful to look at ngrams of two and three to broaden our search for a prediction.
@@ -50,6 +50,8 @@ stopFreq2 <- ngram2$count %>% group_by(word1) %>%
 regFreq2 <- 1-stopFreq2$avg
 
 ngram2$fig
+
+source("partition_ngrams_2.R")
 ```
 
 We can see the most frequent pairs of two words are very common phrases, and they do not differ much between the sources. We can also see the frequency of the bigrams from blogs is significantly higher than from news and twitter, whch dominates the frequent phrases over all of the sources. 
@@ -64,6 +66,8 @@ stopFreq3 <- ngram3$count %>% group_by(word1, word2) %>%
 regFreq3 <- 1-stopFreq3$avg
 
 ngram3$fig
+
+source("partition_ngrams_3.R")
 ```
 
 The ngrams of three words involve slightly different phrases, but similarly to the pairs of two words, the final word in almost all phrases is a stop word. Unlike the ngrams of two words, the most frequent ngrams of three are numerically comparable between blogs and twitter while news falls behind.
@@ -78,6 +82,12 @@ stopFreq4 <- ngram4$count %>% group_by(word1, word2, word3) %>%
 regFreq4 <- 1-stopFreq4$avg
 
 ngram4$fig
+
+source("partition_ngrams_4.R")
+```
+
+```{r echo=FALSE}
+rm(data)
 ```
 
 From first glance, there seems to be more phrases in the 4-word ngrams that end in a non-stop word. While these have a richer diversity of words, these pairings appear much less frequently than the 2- and 3-word ngrams.
@@ -99,13 +109,21 @@ I would also like to incorporate smaller ngram usage if the search for the origi
 
 Also, seeing that the overall frequency of phrases ending in stop words is high, I do not plan on differentiating ruling them out for the prediction model. It makes sense to predict using stop words, because otherwise the prediction would be ignoring the words most likely to be used. 
 
-One exception, however, is that ngrams with numbers as any words are removed. Numbers are much less standard than words (i.e., someone may write 14, 90, or 122 weeks...), so there isn't much point to including them in any prediction. Removing them also frees up some memory in hopes to optimize the prediction model.
+### Training and Test Sets
+
+There are a few modifications to the sets of ngrams. Ngrams containing the following are removed:
+
+* numbers, because they are much more variable than words;
+
+* vowels repeated beyond what is normal for words are removed; and
+
+* a word repeated back-to-back.
+
+After all these cases are removed, for each set of ngrams, the most frequent cases are kept, and the rest are removed. Specifically, the three most frequent final words for any ngram are kept or all if there are less than 3; since the prediction app will only display three words, there do not need to be more than 3 options maintained for any ngram. These removals optimize the amount of memory used and remove foreseeable edge cases in predictions.
 
 The data is separated into a training and test sets to prepare the model.
 
 ```{r}
-source("partition_ngrams.R")
-
 sets <- tibble(set=c("train", "test"), n2=c(NROW(train2), NROW(test2)), 
                n3=c(NROW(train3), NROW(test3)), 
                n4=c(NROW(train4), NROW(test4)))
@@ -113,7 +131,7 @@ sets <- sets %>% mutate(total=rowSums(sets[,2:4]))
 sets %>% rbind(c("total", colSums(sets[,2:5])))
 ```
 
-The training set across all ngrams constitutes roughly 70% of the data, and the other 30% is in the test set. In total, we have roughly 13 million ngrams to build and verify the model. This data is written to files to be used in the prediction app.
+The training set across all ngrams constitutes roughly 60% of the data, and the other 40% is in the test set. In total, we have roughly 13 million ngrams to build and verify the model. This data is written to files to be used in the prediction app.
 
 ```{r}
 write.table(train2, file="./ngrams/train2.txt", sep="\t", row.names=FALSE, quote=FALSE)
