@@ -23,10 +23,6 @@ set.seed(20190521)
 
 This document explores the training data for a natural language processing model. Below are the libraries needed for the analysis.
 
-## Pre-processing
-
-The data has been processed into a tidy format organized by senteces per file. For each file, 25% of the lines are kept to preserve memory. Each line is then separated by sentences, and punctuation is removed. The script used to pre-process the data is read_data.R.
-
 ##  Exploratory Analysis
 
 *(Data reading and ngram manipulation is not presented here to save space. The sourced code can be found in its respective file.)*
@@ -119,7 +115,7 @@ There are a few modifications to the sets of ngrams. Ngrams containing the follo
 
 * a word repeated back-to-back.
 
-After all these cases are removed, for each set of ngrams, the most frequent cases are kept, and the rest are removed. Specifically, the three most frequent final words for any ngram are kept or all if there are less than 3; since the prediction app will only display three words, there do not need to be more than 3 options maintained for any ngram. These removals optimize the amount of memory used and remove foreseeable edge cases in predictions.
+After all these cases are removed, for each set of ngrams, the most frequent cases are kept, and the rest are removed. Specifically, the three most frequent final words for any ngram are kept or all if there are less than 3; since the prediction app will only display three words, there do not need to be more than 3 options maintained for any ngram. These removals optimize the amount of memory used and remove foreseeable edge cases in predictions, and we are left with the following number of ngrams.
 
 ```{r}
 sets <- tibble(n2=NROW(filtered2), n3=NROW(filtered3), n4=NROW(filtered4))
