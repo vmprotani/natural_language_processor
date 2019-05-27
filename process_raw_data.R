@@ -32,7 +32,7 @@ sentences <- lapply(sentences, function(x) x[!grepl("[^[:alnum:] \'-]", x$senten
 # remove lines with only less than 4 words
 sentences <- lapply(sentences, function(x) x[grepl("([A-Za-z\']+ ){3,}", x$sentence), ])
 
-# remove lines with profanity
+# remove lines with profanity (credits listed in ./profanity_data/README.md)
 profanity <- readLines("./profanity_data/en.txt", encoding="UTF-8", skipNul=TRUE)
 profanityPattern <- paste(profanity, collapse="|")
 sentences <- lapply(sentences, function(x) x[!grepl(profanityPattern, x$sentence),])
