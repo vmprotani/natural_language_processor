@@ -29,7 +29,8 @@ clean_text <- function(x) {
   sentences <- lapply(x, unnest_tokens, output=sentence, input=text, token="sentences")
   
   # remove punctuation and common symbols
-  sentences <- lapply(sentences, function(x) tibble(sentence=gsub("(,|\\.|!|?|\\|/|~|\'|-)+", "", x$sentence)))
+  sentences <- lapply(sentences, 
+                      function(x) tibble(sentence=gsub("(,|\\.|!|?|\\|/|~|\'|-)+", "", x$sentence)))
   
   # remove any lines with uncommon symbols
   sentences <- lapply(sentences, function(x) x[!grepl("[^[:alnum:] ]", x$sentence), ])
@@ -47,5 +48,7 @@ output.source <- clean_text(source.samples)
 output.tvt <- clean_text(tvt.samples)
 
 # write data to files
-lapply(index, function(x) write.table(output.source[[x]], file=source.files[x], sep="\t", row.names=FALSE, quote=FALSE))
-lapply(index, function(x) write.table(output.tvt[[x]], file=tvt.files[x], sep="\t", row.names=FALSE, quote=FALSE))
+lapply(index, function(x) write.table(output.source[[x]], file=source.files[x], sep="\t", 
+                                      row.names=FALSE, quote=FALSE))
+lapply(index, function(x) write.table(output.tvt[[x]], file=tvt.files[x], sep="\t", 
+                                      row.names=FALSE, quote=FALSE))
