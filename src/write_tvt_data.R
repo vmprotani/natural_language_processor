@@ -9,7 +9,7 @@ library(tidyr)
 set.seed(20190521)
 
 sources <- c("blogs","news","twitter")
-dir <- "./tidy_data/"
+dir <- "../tidy_data/"
 tvt.files <- paste(dir,"en_US.",sources,".tvt.txt",sep="")
 output.dirs <- c("./train/","./validate/","./test/")
 
@@ -34,19 +34,19 @@ create_ngrams <- function(n) {
 write_ngrams <- function(ngrams, to.append) {
   in.train <- createDataPartition(1:NROW(ngrams), p=0.6, list=FALSE)
   ngrams.train <- ngrams[in.train,]
-  write.table(ngrams.train, "./model_data/train.txt", sep=" ", 
+  write.table(ngrams.train, "../model_data/train.txt", sep=" ", 
               row.names=FALSE, col.names=FALSE, quote=FALSE, append=to.append)
   rm(ngrams.train)
   
   ngrams.not.train <- ngrams[-in.train,]
   in.validate <- createDataPartition(1:NROW(ngrams.not.train), p=0.5, list=FALSE)
   ngrams.validate <- ngrams.not.train[in.validate,]
-  write.table(ngrams.validate, "./model_data/validate.txt", sep=" ", 
+  write.table(ngrams.validate, "../model_data/validate.txt", sep=" ", 
               row.names=FALSE, col.names=FALSE, quote=FALSE, append=to.append)
   rm(ngrams.validate)
   
   ngrams.test <- ngrams.not.train[-in.validate,]
-  write.table(ngrams.test, "./model_data/test.txt", sep=" ", 
+  write.table(ngrams.test, "../model_data/test.txt", sep=" ", 
               row.names=FALSE, col.names=FALSE, quote=FALSE, append=to.append)
 }
 

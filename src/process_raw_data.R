@@ -3,13 +3,13 @@ library(tidytext)
 
 set.seed(20190517)
 
-data.dir   <- "./Coursera-SwiftKey/final/en_US/"
+data.dir   <- "../Coursera-SwiftKey/final/en_US/"
 data.sources <- c("blogs", "news", "twitter")
 files     <- paste("en_US.", data.sources, ".txt", sep="")
 data.files <- paste(data.dir, files, sep="")
 index  <- 1:length(data.files)
 
-tidy.dir <- "./tidy_data/"
+tidy.dir <- "../tidy_data/"
 source.files <- paste(tidy.dir, "en_US.", data.sources, ".source.txt", sep="")
 tvt.files <- paste(tidy.dir, "en_US", data.sources, ".tvt.txt", sep="")
 
@@ -21,7 +21,7 @@ tvt.samples <- lapply(index, function(x) tibble(text=lines[[x]][random.select[[x
 rm(random.select, lines, cons, data.files, files, data.dir)
 
 # load profanity data for filtering
-profanity <- readLines("./profanity_data/en.txt", encoding="UTF-8", skipNul=TRUE)
+profanity <- readLines("../profanity_data/en.txt", encoding="UTF-8", skipNul=TRUE)
 profanity.str <- paste(profanity, collapse="|")
 
 # tidy a list of data sets

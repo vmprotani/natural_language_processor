@@ -8,7 +8,7 @@ set.seed(20190521)
 
 # list tidy data files to read
 dataNames <- c("blogs", "news", "twitter")
-dataDir <- "./tidy_data/"
+dataDir <- "../tidy_data/"
 dataFileNames <- c("en_US.blogs.source.txt", "en_US.news.source.txt", "en_US.twitter.source.txt")
 dataFiles <- paste(dataDir, dataFileNames, sep="")
 filesIndex <- 1:length(dataFiles)
