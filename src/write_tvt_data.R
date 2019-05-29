@@ -27,25 +27,25 @@ create_ngrams <- function(n) {
 
   num.words <- 1:n
   words <- paste("word", num.words, sep="")
-  ngramSep <- bind_rows(ngrams) %>% separate("ngram", words, sep=" ")
+  bind_rows(ngrams) %>% separate("ngram", words, sep=" ")
+}
+
+# combine first n-1 words to separate input from correct word
+format_input <- function(ngrams, n) {
+  input.words <- paste("word", 1:n-1, sep="")
+  ngrams %>% mutate(input=apply(ngrams[,input.words], 1, paste, collapse=" ")) %>% 
+    (function(x) x[,c("input", paste("word", n, sep=""))])
 }
 
 # write ngrams to file
 write_ngrams <- function(ngrams, to.append) {
-  in.train <- createDataPartition(1:NROW(ngrams), p=0.6, list=FALSE)
+  in.train <- createDataPartition(1:NROW(ngrams), p=0.8, list=FALSE)
   ngrams.train <- ngrams[in.train,]
   write.table(ngrams.train, "../model_data/train.txt", sep=" ", 
               row.names=FALSE, col.names=FALSE, quote=FALSE, append=to.append)
   rm(ngrams.train)
   
-  ngrams.not.train <- ngrams[-in.train,]
-  in.validate <- createDataPartition(1:NROW(ngrams.not.train), p=0.5, list=FALSE)
-  ngrams.validate <- ngrams.not.train[in.validate,]
-  write.table(ngrams.validate, "../model_data/validate.txt", sep=" ", 
-              row.names=FALSE, col.names=FALSE, quote=FALSE, append=to.append)
-  rm(ngrams.validate)
-  
-  ngrams.test <- ngrams.not.train[-in.validate,]
+  ngrams.test <- ngrams[-in.train,]
   write.table(ngrams.test, "../model_data/test.txt", sep=" ", 
               row.names=FALSE, col.names=FALSE, quote=FALSE, append=to.append)
 }
@@ -55,6 +55,7 @@ bigrams <- create_ngrams(2)
 bigrams <- bigrams %>% filter(is_word(word1) & is_word(word2)) %>% 
   filter(!(vowel_repeats(word1) | vowel_repeats(word2))) %>% 
   filter(!(word1==word2))
+format_input(bigrams, 2)
 write_ngrams(bigrams, FALSE)
 rm(bigrams)
 
@@ -63,6 +64,7 @@ trigrams <- create_ngrams(3)
 trigrams <- trigrams %>% filter(is_word(word1) & is_word(word2) & is_word(word3)) %>% 
   filter(!(vowel_repeats(word1) | vowel_repeats(word2) | vowel_repeats(word3))) %>% 
   filter(!(word1==word2 | word2==word3))
+format_input(trigrams, 3)
 write_ngrams(trigrams, TRUE)
 rm(trigrams)
 
@@ -72,5 +74,6 @@ quadrigrams <- quadrigrams %>%
   filter(is_word(word1) & is_word(word2) & is_word(word3) & is_word(word4)) %>% 
   filter(!(vowel_repeats(word1) | vowel_repeats(word2) | vowel_repeats(word3) | vowel_repeats(word4))) %>% 
   filter(!(word1==word2 | word2==word3 | word3==word4))
+format_input(quadrigrams, 4)
 write_ngrams(quadrigrams, TRUE)
 rm(quadrigrams)
