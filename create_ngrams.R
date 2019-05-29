@@ -33,7 +33,7 @@ createNgrams <- function(n) {
   ngramSep <- bind_rows(ngrams) %>% separate("ngram", paste("word", numWords, sep=""), sep=" ")
   
   # return separated ngrams and figure
-  ngram2 <- list(count=ngramSep, fig=annotate_figure(
+  list(count=ngramSep, fig=annotate_figure(
     ggarrange(left, right, ncol=2, nrow=1) + theme(plot.margin=unit(c(0.3,0,0,0), "cm")),
     fig.lab=paste(n, "-word ngrams", sep=""), fig.lab.pos="top", fig.lab.face="bold"))
 }
