@@ -153,7 +153,8 @@ count_all_trigrams <- function(trigrams) {
 #   a table of filtered and counted quadrigrams
 ################################################################################
 clean_quadrigrams <- function(quadrigrams, include.source) {
-  filtered <- trigrams %>% filter(is_word(word1) & is_word(word2) & is_word(word3) & is_word(word4)) %>% 
+  filtered <- quadrigrams %>% filter(is_word(word1) & is_word(word2) & 
+                                       is_word(word3) & is_word(word4)) %>% 
     filter(!vowel_repeats(word1) & !vowel_repeats(word2) & 
              !vowel_repeats(word3) & !vowel_repeats(word4)) %>%
     filter(word1 != word2 & word2 != word3 & word3 != word4)
