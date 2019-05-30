@@ -1,0 +1,36 @@
+---
+title: "create_ngrams_data"
+author: "Vince Protani"
+date: "5/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+```
+
+## Exploratory Data Analysis
+
+```{r}
+tidy.dir <- "../tidy_data/"
+sources <- c("blogs", "news", "twitter")
+num.sources <- length(sources)
+source.files <- paste(tidy.dir, "en_US.", sources, ".source.txt", sep="")
+tvt.files <- paste(tidy.dir, "en_US.", sources, ".tvt.txt", sep="")
+source("mod_ngrams.R")
+```
+
+```{r}
+source.data <- lapply(source.files, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE) %>%
+  lapply(1:num.sources, function(x) mutate(source.data[[x]], source=sources[x])) %>%
+  lapply(as_tibble)
+```
+
+```{r}
+unigrams <- create_ngrams(source.data, 1)
+unigrams <- clean_unigrams(unigrams, TRUE)
+# plot?
