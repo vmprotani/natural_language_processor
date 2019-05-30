@@ -59,6 +59,20 @@ clean_unigrams <- function(unigrams, include.source) {
 }
 
 ################################################################################
+# counts unigrams across all sources
+#
+# args
+#   unigrams The filtered unigrams from the data
+#
+# return
+#   a table of counted unigrams
+################################################################################
+count_all_unigrams <- function(unigrams) {
+  unigrams %>% ungroup() %>% select(-source) %>% group_by(word1) %>% summarize(total=sum(n)) %>% 
+    arrange(desc(total), word1)
+}
+
+################################################################################
 # filters unneeded bigrams and counts remaining
 #
 # args
@@ -70,12 +84,27 @@ clean_unigrams <- function(unigrams, include.source) {
 ################################################################################
 clean_bigrams <- function(bigrams, include.source) {
   filtered <- bigrams %>% filter(is_word(word1) & is_word(word2)) %>% 
-    filter(!vowel_repeats(word1) & !vowel_repeats(word2))
+    filter(!vowel_repeats(word1) & !vowel_repeats(word2)) %>%
+    filter(word1 != word2)
   if (include.source) { filtered <- filtered %>% group_by(source, word1) }
   else { filtered <- filtered %>% group_by(word1) }
   counted <- filtered %>% dplyr::count(word2)
   if (include.source) { counted %>% arrange(source, word1, desc(n)) }
   else { counted %>% arrange(word1, desc(n)) }
+}
+
+################################################################################
+# counts bigrams across all sources
+#
+# args
+#   bigrams The filtered bigrams from the data
+#
+# return
+#   a table of counted bigrams
+################################################################################
+count_all_bigrams <- function(bigrams) {
+  bigrams %>% ungroup() %>% select(-source) %>% group_by(word1, word2) %>% summarize(total=sum(n)) %>% 
+    arrange(desc(total), word1, word2)
 }
 
 ################################################################################
@@ -90,12 +119,27 @@ clean_bigrams <- function(bigrams, include.source) {
 ################################################################################
 clean_trigrams <- function(trigrams, include.source) {
   filtered <- trigrams %>% filter(is_word(word1) & is_word(word2) & is_word(word3)) %>% 
-    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & !vowel_repeats(word3))
+    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & !vowel_repeats(word3)) %>%
+    filter(word1 != word2 & word2 != word3)
   if (include.source) { filtered <- filtered %>% group_by(source, word1, word2) }
   else { filtered <- filtered %>% group_by(word1, word2) }
   counted <- filtered %>% dplyr::count(word3)
   if (include.source) { counted %>% arrange(source, word1, word2, desc(n)) }
   else { counted %>% arrange(word1, word2, desc(n)) }  
+}
+
+################################################################################
+# counts trigrams across all sources
+#
+# args
+#   trigrams The filtered trigrams from the data
+#
+# return
+#   a table of counted trigrams
+################################################################################
+count_all_trigrams <- function(trigrams) {
+  trigrams %>% ungroup() %>% select(-source) %>% group_by(word1, word2, word3) %>% 
+    summarize(total=sum(n)) %>% arrange(desc(total), word1, word2, word3)
 }
 
 ################################################################################
@@ -110,12 +154,28 @@ clean_trigrams <- function(trigrams, include.source) {
 ################################################################################
 clean_quadrigrams <- function(quadrigrams, include.source) {
   filtered <- trigrams %>% filter(is_word(word1) & is_word(word2) & is_word(word3) & is_word(word4)) %>% 
-    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & !vowel_repeats(word3) & !vowel_repeats(word4))
+    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & 
+             !vowel_repeats(word3) & !vowel_repeats(word4)) %>%
+    filter(word1 != word2 & word2 != word3 & word3 != word4)
   if (include.source) { filtered <- filtered %>% group_by(source, word1, word2, word3) }
   else { filtered <- filtered %>% group_by(word1, word2, word3) }
   counted <- filtered %>% dplyr::count(word4)
   if (include.source) { counted %>% arrange(source, word1, word2, word3, desc(n)) }
   else { counted %>% arrange(word1, word2, word3, desc(n)) } 
+}
+
+################################################################################
+# counts quadrigrams across all sources
+#
+# args
+#   quadrigrams The filtered quadrigrams from the data
+#
+# return
+#   a table of counted quadrigrams
+################################################################################
+count_all_quadrigrams <- function(quadrigrams) {
+  quadrigrams %>% ungroup() %>% select(-source) %>% group_by(word1, word2, word3, word4) %>% 
+    summarize(total=sum(n)) %>% arrange(desc(total), word1, word2, word3, word4)
 }
 
 ################################################################################
@@ -128,10 +188,22 @@ clean_quadrigrams <- function(quadrigrams, include.source) {
 # return
 #   a table with the ngrams separated between the first n-1 words and the last
 ################################################################################
-format_tvt <- function(ngrams, n) {
+clean_tvt <- function(ngrams, n) {
   input.words <- paste("word", 1:n-1, sep="")
   ngrams %>% mutate(input=apply(ngrams[,input.words], 1, paste, collapse=" ")) %>% 
     (function(x) x[,c("input", paste("word", n, sep=""))])
+}
+
+################################################################################
+# writes reference ngrams to file
+#
+# args
+#   ngrams Table of ngrams to write to file
+#   file.name Name of file to write
+################################################################################
+write_ngrams <- function(ngrams, file.name) {
+  file <- paste("../ngrams/", file.name, ".txt", sep="")
+  write.table(ngrams, file, sep="\t", row.names=FALSE, quote=FALSE)
 }
 
 ################################################################################
@@ -151,16 +223,4 @@ write_tvt <- function(ngrams, to.append) {
   ngrams.test <- ngrams[-in.train,]
   write.table(ngrams.test, "../model_data/test.txt", sep="\t", 
               row.names=FALSE, col.names=FALSE, quote=FALSE, append=to.append)
-}
-
-################################################################################
-# writes reference ngrams to file
-#
-# args
-#   ngrams Table of ngrams to write to file
-#   file.name Name of file to write
-################################################################################
-write_ngrams <- function(ngrams, file.name) {
-  file <- paste("../ngrams/", file.name, ".txt", sep="")
-  write.table(ngrams, file, sep="\t", row.names=FALSE, quote=FALSE)
 }
