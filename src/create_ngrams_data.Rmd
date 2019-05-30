@@ -10,7 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-
+library(tidytext)
+library(dplyr)
 ```
 
 ## Exploratory Data Analysis
@@ -25,12 +26,42 @@ source("mod_ngrams.R")
 ```
 
 ```{r}
-source.data <- lapply(source.files, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE) %>%
-  lapply(1:num.sources, function(x) mutate(source.data[[x]], source=sources[x])) %>%
-  lapply(as_tibble)
+source.data <- lapply(source.files, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
+source.data <- lapply(1:num.sources, function(x) mutate(source.data[[x]], source=sources[x])) %>% lapply(as_tibble)
 ```
 
 ```{r}
 unigrams <- create_ngrams(source.data, 1)
 unigrams <- clean_unigrams(unigrams, TRUE)
 # plot?
+unigrams <- count_all_unigrams(unigrams)
+write_ngrams(unigrams, "unigrams")
+rm(unigrams)
+```
+
+```{r}
+bigrams <- create_ngrams(source.data, 2)
+bigrams <- clean_bigrams(bigrams, TRUE)
+# plot?
+bigrams <- count_all_bigrams(bigrams)
+write_ngrams(bigrams, "bigrams")
+rm(bigrams)
+```
+
+```{r}
+trigrams <- create_ngrams(source.data, 3)
+trigrams <- clean_trigrams(trigrams, TRUE)
+# plot?
+trigrams <- count_all_trigrams(trigrams)
+write_ngrams(trigrams, "trigrams")
+rm(trigrams)
+```
+
+```{r}
+quadrigrams <- create_ngrams(source.data, 4)
+quadrigrams <- clean_quadrigrams(quadrigrams, TRUE)
+# plot?
+quadrigrams <- count_all_quadrigrams(quadrigrams)
+write_ngrams(quadrigrams, "quadrigrams")
+rm(quadrigrams, source.data)
+```
