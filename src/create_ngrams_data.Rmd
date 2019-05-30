@@ -16,6 +16,8 @@ library(dplyr)
 
 ## Exploratory Data Analysis
 
+### Read Source Data
+
 ```{r}
 tidy.dir <- "../tidy_data/"
 sources <- c("blogs", "news", "twitter")
@@ -29,6 +31,8 @@ source("mod_ngrams.R")
 source.data <- lapply(source.files, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
 source.data <- lapply(1:num.sources, function(x) mutate(source.data[[x]], source=sources[x])) %>% lapply(as_tibble)
 ```
+
+### Create Ngrams
 
 ```{r}
 unigrams <- create_ngrams(source.data, 1)
@@ -65,3 +69,12 @@ quadrigrams <- count_all_quadrigrams(quadrigrams)
 write_ngrams(quadrigrams, "quadrigrams")
 rm(quadrigrams, source.data)
 ```
+
+################################################################################
+
+top.by.source <- bigrams %>% ungroup() %>% ddply(.(source), function(x) x[1:10,]) %>% mutate(combined=paste(word1, word2)) %>% as_tibble()
+top.all <- bigrams %>% ungroup() %>% select(-source) %>% group_by(word1, word2) %>% dplyr::summarize(n=sum(n)) %>% arrange(desc(n)) %>% (function(x) x[1:10,]) %>% mutate(combined=paste(word1, word2))
+
+p1 <- ggplot(top.by.source, aes(x=combined, y=n, fill=n)) + geom_bar(stat="identity") + facet_wrap(source~.) + coord_flip() + labs(x="", y="") + theme(legend.position="none")
+p2 <- ggplot(top.all, aes(x=combined, y=n, fill=n)) + geom_bar(stat="identity") + coord_flip() + labs(x="", y="") + theme(legend.position="none")
+ggarrange(p1, p2, nrow=2, ncol=1) %>% annotate_figure(top="bigram frequency")
