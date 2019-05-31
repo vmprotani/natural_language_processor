@@ -15,7 +15,7 @@ run_backoff <- function(input) {
     return(NULL)
   }
   
-  prediction <- find_in_ngram(ngram, num.words+1, 3)
+  prediction <- find_in_ngram(ngram, num.words+1)
   
   return(prediction)
 }
@@ -25,23 +25,29 @@ run_backoff <- function(input) {
 #
 # args
 #   input User string input
+#   n Ngrams to start with
+#   prev.found Logical vector for (n+1)grams found before backing off
 #
 # returns
 #   The word prediction based on input
 ################################################################################
-find_in_ngram <- function(input, n, needed.pred) {
+find_in_ngram <- function(input, n, prev.found=NULL) {
   # find matching ngrams
   found.index <- get_found(input, n)
   if (sum(is.na(found.index)) >= 1) { return(NULL) }
   found.ngrams <- data[[n]][found.index,]
   num.ends.found <- NROW(found.ngrams)
-  
+  # if calculating alpha, exclude the words that were found in the (n+1)grams
+  if (sum(is.na(prev.found)) == 0) {
+    unique.end.words <- found.ngrams[,n] %in% data[[n+1]][prev.found,n+1]
+    found.ngrams <- with(found.ngrams, found.ngrams[!unique.end.words])
+  }
   # input with first word removed in case of backoff
   backoff.input <- input[-1]
   
   # at least one matching ngram is found
   if (num.ends.found > 0) {
-    end.words <- 1:min(needed.pred, num.ends.found)
+    end.words <- 1:num.ends.found
     
     # calculate the count considering unobserved ngrams
     c <- compute_c(data[[n]], found.ngrams[end.words,]$total)
@@ -51,23 +57,21 @@ find_in_ngram <- function(input, n, needed.pred) {
     # calculate the probability using the count
     p.bo <- c / sum(found.ngrams$total)
     
-    prediction <- tibble(word=found.ngrams[end.words,NCOL(found.ngrams)-1], prob=p.bo)
-    if (NROW(prediction) != needed.pred) {
-      more_predictions <- find_in_ngram(backoff.input, n-1, needed.pred-NROW(prediction))
-      if (!sum(is.na(more_predictions)) >=1) {
-        prediction <- bind_rows(prediction, more_predictions)
-      }
+    prediction <- tibble(word=found.ngrams[end.words,n], prob=p.bo)
+    more_predictions <- find_in_ngram(backoff.input, n-1)
+    if (!sum(is.na(more_predictions)) >=1) {
+      prediction <- bind_rows(prediction, more_predictions)
     }
   }
   # no matching ngrams were found
   else {
-    prediction <- find_in_ngram(backoff.input, n-1, needed.pred)
+    prediction <- find_in_ngram(backoff.input, n-1)
     
     found.backoff <- get_found(backoff.input, n-1)
-    prediction$prob <- compute_alpha(data[[n]], found.index, found.backoff) * prediction$prob
+    prediction$prob <- compute_alpha(data[[n]], found.index, backoff.input) * prediction$prob
   }
   
-  prediction <- arrange(prediction, desc(prob))
+  prediction <- arrange(prediction, desc(prob)) %>% (function(x) x[1:min(3, NROW(x)),])
   return(prediction)
 }
 
@@ -103,12 +107,14 @@ compute_c <- function(ngrams, count) {
 #   Backoff weight by which to multiply probably of a prediction found by
 #   backing off
 ################################################################################
-compute_alpha <- function(n, found.index, found.backoff) {
-  #beta <- 1 - 
-  #  sum(compute_c(data[[n]], data[[n]][found.index,]$total)) / sum(data[[n]][found.index,]$total)
+compute_alpha <- function(n, found.index, backoff.input) {
+  beta <- 1 - 
+    sum(compute_c(data[[n]], data[[n]][found.index,]$total)) / sum(data[[n]][found.index,]$total)
   
-  # finish alpha computation
-  return(0.4)
+  alpha.probs <- find_in_ngram(backoff.input, n-1, found.index)
+  alpha <- beta/sum(alpha.probs$prob)
+
+  return(alpha)
 }
 
 ################################################################################
@@ -153,7 +159,7 @@ get_found <- function(input, n) {
 clean_input <- function(input) {
   separate.input <- unlist(strsplit(input, "[^A-Za-z\'-]+"))
   last <- length(separate.input)
-  first <- max(1, last-2)
+  first <- max(1, last-(max.ngrams+1))
   
   tidy.input <- separate.input[first:last]
   tidy.input <- gsub("[-\']", "", tidy.input)
@@ -176,4 +182,5 @@ read_data <- function() {
   
   return(data)
 }
+max.ngrams <- 5
 data <- read_data()
