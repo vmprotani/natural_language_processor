@@ -1,16 +1,179 @@
-calculate_discount <- function(ngrams) {
-  ngrams$discount <- rep(1, NROW(ngrams))
+################################################################################
+# begins the Katz Backoff Model algorithm
+#
+# args
+#   input User string input
+#
+# returns
+#   A word prediction based on the input
+################################################################################
+run_backoff <- function(input) {
+  ngram <- clean_input(input)
+  num.words <- length(ngram)
   
-  for (II in 1:5) {
-    n_curr <- NROW(ngrams[n==i,])
-    n_next <- NROW(ngrams[n==i+1,])
-    
-    d_curr <- ((i+1)/i) * (n_next/n_curr)
-    
-    ngrams[n==i, ]$discount <- d_curr
+  if (num.words == 0 ) {
+    return(NULL)
   }
+  
+  prediction <- find_in_ngram(ngram, num.words+1, 3)
+  
+  return(prediction)
 }
 
-calculate_leftover <- function(count, discount) {
-  1 - sum((discount * count)/sum(count))
+################################################################################
+# looks for an ngram in the quadrigrams data
+#
+# args
+#   input User string input
+#
+# returns
+#   The word prediction based on input
+################################################################################
+find_in_ngram <- function(input, n, needed.pred) {
+  # find matching ngrams
+  found.index <- get_found(input, n)
+  if (sum(is.na(found.index)) >= 1) { return(NULL) }
+  found.ngrams <- data[[n]][found.index,]
+  num.ends.found <- NROW(found.ngrams)
+  
+  # input with first word removed in case of backoff
+  backoff.input <- input[-1]
+  
+  # at least one matching ngram is found
+  if (num.ends.found > 0) {
+    end.words <- 1:min(needed.pred, num.ends.found)
+    
+    # calculate the count considering unobserved ngrams
+    c <- compute_c(data[[n]], found.ngrams[end.words,]$total)
+    c <- lapply(end.words, 
+           function(x) if (is.na(c[x]) | c[x] == 0 | c[x] == Inf) { found.ngrams[x,]$total } 
+           else { c[x] }) %>% unlist()
+    # calculate the probability using the count
+    p.bo <- c / sum(found.ngrams$total)
+    
+    prediction <- tibble(word=found.ngrams[end.words,NCOL(found.ngrams)-1], prob=p.bo)
+    if (NROW(prediction) != needed.pred) {
+      more_predictions <- find_in_ngram(backoff.input, n-1, needed.pred-NROW(prediction))
+      if (!sum(is.na(more_predictions)) >=1) {
+        prediction <- bind_rows(prediction, more_predictions)
+      }
+    }
+  }
+  # no matching ngrams were found
+  else {
+    prediction <- find_in_ngram(backoff.input, n-1, needed.pred)
+    
+    found.backoff <- get_found(backoff.input, n-1)
+    prediction$prob <- compute_alpha(data[[n]], found.index, found.backoff) * prediction$prob
+  }
+  
+  prediction <- arrange(prediction, desc(prob))
+  return(prediction)
 }
+
+################################################################################
+# computes Good-Turing discount estimate
+#
+# args
+#   ngrams Table of ngrams to consider
+#   count Number of times the found ngram has occurred
+#
+# returns
+#   Good-Turing discount estimate, the count estimate considering unobserved
+#   ngrams
+################################################################################
+compute_c <- function(ngrams, count) {
+  N.plus <- lapply(count, function(x) NROW(with(ngrams, ngrams[total==x+1,]))) %>% unlist()
+  N <- lapply(count, function(x) NROW(with(ngrams, ngrams[total==x,]))) %>% unlist()
+  
+  new.c <- (count+1)*N.plus/N
+  
+  return(new.c)
+}
+
+################################################################################
+# computes backoff weight
+#
+# args
+#   n N in ngrams to consider
+#   found.index Logical vector of which rows have the found ngram from input
+#   found.backoff Logical vector for the found (n-1)grams from input
+#
+# returns
+#   Backoff weight by which to multiply probably of a prediction found by
+#   backing off
+################################################################################
+compute_alpha <- function(n, found.index, found.backoff) {
+  #beta <- 1 - 
+  #  sum(compute_c(data[[n]], data[[n]][found.index,]$total)) / sum(data[[n]][found.index,]$total)
+  
+  # finish alpha computation
+  return(0.4)
+}
+
+################################################################################
+# gets ngrams where the first n-1 words match the input
+#
+# args
+#   input User string input
+#   n Number of words in ngrams to consider
+#
+# returns
+#   Logical vector for which rows have matching ngrams
+################################################################################
+get_found <- function(input, n) {
+  if (n == 4) {
+    found.index <- with(data[[n]], word1==input[1] & word2==input[2] & word3==input[3])
+  }
+  else if (n == 3) {
+    found.index <- with(data[[n]], word1==input[1] & word2==input[2])
+  }
+  else if (n == 2) {
+    found.index <- with(data[[n]], word1==input[1])
+  }
+  else if (n ==1 ) {
+    found.index <- rep(TRUE, NROW(data[[n]]))
+  }
+  else {
+    found.index <- NULL
+  }
+  
+  return(found.index)
+}
+
+################################################################################
+# turns user input into an ngram of at most 3 words
+#
+# args
+#   input User string input
+#
+# returns
+#   The user input converted into an ngram
+################################################################################
+clean_input <- function(input) {
+  separate.input <- unlist(strsplit(input, "[^A-Za-z\'-]+"))
+  last <- length(separate.input)
+  first <- max(1, last-2)
+  
+  tidy.input <- separate.input[first:last]
+  tidy.input <- gsub("[-\']", "", tidy.input)
+  
+  return(tidy.input)
+}
+
+################################################################################
+# reads data from the ngram source files
+
+# returns
+#   Ngram source data
+################################################################################
+read_data <- function() {
+  ngrams <- c("1grams", "2grams", "3grams", "4grams", "5grams", "6grams")
+  files <- paste("../ngrams/", ngrams, ".txt", sep="")
+  
+  data <- lapply(files, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
+  data <- lapply(data, as_tibble)
+  
+  return(data)
+}
+data <- read_data()
