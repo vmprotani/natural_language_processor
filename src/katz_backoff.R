@@ -12,7 +12,7 @@ run_backoff <- function(input) {
   num.words <- length(ngram)
   
   if (num.words == 0 ) {
-    return(NULL)
+    return(NA)
   }
   
   prediction <- find_in_ngram(ngram, num.words+1)
@@ -31,18 +31,18 @@ run_backoff <- function(input) {
 # returns
 #   The word prediction based on input
 ################################################################################
-find_in_ngram <- function(input, n, prev.found=NULL) {
+find_in_ngram <- function(input, n, prev.found=NA) {
   # find matching ngrams
   found.index <- get_found(input, n)
-  if (sum(is.na(found.index)) >= 1) { return(NULL) }
+  if (sum(is.na(found.index)) != 0) { return(NA) }
   found.ngrams <- data[[n]][found.index,]
   num.ends.found <- NROW(found.ngrams)
   # if calculating alpha, exclude the words that were found in the (n+1)grams
   if (sum(is.na(prev.found)) == 0) {
     unique.end.words <- found.ngrams[,n] %in% data[[n+1]][prev.found,n+1]
-    found.ngrams <- with(found.ngrams, found.ngrams[!unique.end.words])
+    found.ngrams <- found.ngrams[!unique.end.words,]
   }
-  # input with first word removed in case of backoff
+  # remove first word from input in case of backoff
   backoff.input <- input[-1]
   
   # at least one matching ngram is found
@@ -58,8 +58,9 @@ find_in_ngram <- function(input, n, prev.found=NULL) {
     p.bo <- c / sum(found.ngrams$total)
     
     prediction <- tibble(word=found.ngrams[end.words,n], prob=p.bo)
+    
     more_predictions <- find_in_ngram(backoff.input, n-1)
-    if (!sum(is.na(more_predictions)) >=1) {
+    if (sum(is.na(more_predictions)) == 0) {
       prediction <- bind_rows(prediction, more_predictions)
     }
   }
@@ -108,13 +109,14 @@ compute_c <- function(ngrams, count) {
 #   backing off
 ################################################################################
 compute_alpha <- function(n, found.index, backoff.input) {
-  beta <- 1 - 
-    sum(compute_c(data[[n]], data[[n]][found.index,]$total)) / sum(data[[n]][found.index,]$total)
+#  beta <- 1 - 
+#    sum(compute_c(data[[n]], data[[n]][found.index,]$total)) / sum(data[[n]][found.index,]$total)
   
-  alpha.probs <- find_in_ngram(backoff.input, n-1, found.index)
-  alpha <- beta/sum(alpha.probs$prob)
+#  alpha.probs <- find_in_ngram(backoff.input, n-1, prev.found=found.index)
+#  alpha <- beta/sum(alpha.probs$prob)
 
-  return(alpha)
+#  return(alpha)
+  return(0.4)
 }
 
 ################################################################################
@@ -128,7 +130,15 @@ compute_alpha <- function(n, found.index, backoff.input) {
 #   Logical vector for which rows have matching ngrams
 ################################################################################
 get_found <- function(input, n) {
-  if (n == 4) {
+  if (n == 6) {
+    found.index <- with(data[[n]], word1==input[1] & word2==input[2] && word3==input[3] && 
+                          word[4]==input[4] && word5==input[5])
+  }
+  else if (n == 5) {
+    found.index <- with(data[[n]], word1==input[1] & word2==input[2] && word3==input[3] && 
+                          word4==input[4])
+  }
+  else if (n == 4) {
     found.index <- with(data[[n]], word1==input[1] & word2==input[2] & word3==input[3])
   }
   else if (n == 3) {
@@ -141,7 +151,7 @@ get_found <- function(input, n) {
     found.index <- rep(TRUE, NROW(data[[n]]))
   }
   else {
-    found.index <- NULL
+    found.index <- NA
   }
   
   return(found.index)
@@ -159,7 +169,7 @@ get_found <- function(input, n) {
 clean_input <- function(input) {
   separate.input <- unlist(strsplit(input, "[^A-Za-z\'-]+"))
   last <- length(separate.input)
-  first <- max(1, last-(max.ngrams+1))
+  first <- max(1, last-(max.ngrams-1))
   
   tidy.input <- separate.input[first:last]
   tidy.input <- gsub("[-\']", "", tidy.input)
