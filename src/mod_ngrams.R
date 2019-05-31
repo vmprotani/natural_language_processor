@@ -49,13 +49,16 @@ vowel_repeats <- function(x) { grepl("(a|i|u){2,}|(e|o){3,}", x) }
 # return
 #   a table of filtered and counted unigrams
 ################################################################################
-clean_unigrams <- function(unigrams, include.source) {
-  filtered <- unigrams %>% filter(is_word(word1)) %>% filter(!vowel_repeats(word1))
-  if (include.source) { filtered <- filtered %>% group_by(source, word1) }
-  else { filtered <- filtered %>% group_by(word1) }
-  counted <- filtered %>% dplyr::count(word1)
-  if (include.source) { counted %>% arrange(source, word1, desc(n)) }
-  else { counted %>% arrange(word1, desc(n)) }
+clean_1grams <- function(grams.1, include.source) {
+  filtered <- grams.1 %>% filter(is_word(word1)) %>% filter(!vowel_repeats(word1))
+  if (include.source) { 
+    counted <- filtered %>% dplyr::count(source, word1) %>% arrange(source, word1, desc(n))
+  }
+  else { 
+    counted <- filtered %>% dplyr::count(word1) %>% arrange(word1, desc(n))
+  }
+  
+  return(counted)
 }
 
 ################################################################################
@@ -67,9 +70,11 @@ clean_unigrams <- function(unigrams, include.source) {
 # return
 #   a table of counted unigrams
 ################################################################################
-count_all_unigrams <- function(unigrams) {
-  unigrams %>% ungroup() %>% select(-source) %>% group_by(word1) %>% summarize(total=sum(n)) %>% 
-    arrange(desc(total), word1)
+count_all_1grams <- function(grams.1) {
+  counted <- grams.1 %>% select(-source) %>% group_by(word1) %>% summarize(total=sum(n)) %>% 
+    arrange(word1, desc(total))
+  
+  return(counted)
 }
 
 ################################################################################
@@ -82,15 +87,17 @@ count_all_unigrams <- function(unigrams) {
 # return
 #   a table of filtered and counted trigrams
 ################################################################################
-clean_bigrams <- function(bigrams, include.source) {
-  filtered <- bigrams %>% filter(is_word(word1) & is_word(word2)) %>% 
-    filter(!vowel_repeats(word1) & !vowel_repeats(word2)) %>%
-    filter(word1 != word2)
-  if (include.source) { filtered <- filtered %>% group_by(source, word1) }
-  else { filtered <- filtered %>% group_by(word1) }
-  counted <- filtered %>% dplyr::count(word2)
-  if (include.source) { counted %>% arrange(source, word1, desc(n)) }
-  else { counted %>% arrange(word1, desc(n)) }
+clean_2grams <- function(grams.2, include.source) {
+  filtered <- grams.2 %>% filter(is_word(word1) & is_word(word2)) %>% 
+    filter(!vowel_repeats(word1) & !vowel_repeats(word2))
+  if (include.source) { 
+    counted <- filtered %>% dplyr::count(source, word1, word2) %>% arrange(source, word1, word2, desc(n))
+  }
+  else { 
+    counted <- filtered %>% dplyr::count(word1, word2) %>% arrange(word1, word2, desc(n))
+  }
+  
+  return(counted)
 }
 
 ################################################################################
@@ -102,9 +109,11 @@ clean_bigrams <- function(bigrams, include.source) {
 # return
 #   a table of counted bigrams
 ################################################################################
-count_all_bigrams <- function(bigrams) {
-  bigrams %>% ungroup() %>% select(-source) %>% group_by(word1, word2) %>% summarize(total=sum(n)) %>% 
-    arrange(desc(total), word1, word2)
+count_all_2grams <- function(grams.2) {
+  counted <- grams.2 %>% select(-source) %>% group_by(word1, word2) %>% summarize(total=sum(n)) %>% 
+    arrange(word1, word2, desc(total))
+  
+  return(counted)
 }
 
 ################################################################################
@@ -117,15 +126,18 @@ count_all_bigrams <- function(bigrams) {
 # return
 #   a table of filtered and counted bigrams
 ################################################################################
-clean_trigrams <- function(trigrams, include.source) {
-  filtered <- trigrams %>% filter(is_word(word1) & is_word(word2) & is_word(word3)) %>% 
-    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & !vowel_repeats(word3)) %>%
-    filter(word1 != word2 & word2 != word3)
-  if (include.source) { filtered <- filtered %>% group_by(source, word1, word2) }
-  else { filtered <- filtered %>% group_by(word1, word2) }
-  counted <- filtered %>% dplyr::count(word3)
-  if (include.source) { counted %>% arrange(source, word1, word2, desc(n)) }
-  else { counted %>% arrange(word1, word2, desc(n)) }  
+clean_3grams <- function(grams.3, include.source) {
+  filtered <- grams.3 %>% filter(is_word(word1) & is_word(word2) & is_word(word3)) %>% 
+    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & !vowel_repeats(word3))
+  if (include.source) { 
+    counted <- filtered %>% dplyr::count(source, word1, word2, word3) %>% 
+      arrange(source, word1, word2, word3, desc(n)) 
+  }
+  else { 
+    counted <- filtered %>% dplyr::count(word1, word2, word3) %>% arrange(word1, word2, word3, desc(n))
+  }
+  
+  return(counted)
 }
 
 ################################################################################
@@ -137,9 +149,11 @@ clean_trigrams <- function(trigrams, include.source) {
 # return
 #   a table of counted trigrams
 ################################################################################
-count_all_trigrams <- function(trigrams) {
-  trigrams %>% ungroup() %>% select(-source) %>% group_by(word1, word2, word3) %>% 
-    summarize(total=sum(n)) %>% arrange(desc(total), word1, word2, word3)
+count_all_3grams <- function(grams.3) {
+  counted <- grams.3 %>% select(-source) %>% group_by(word1, word2, word3) %>% 
+    summarize(total=sum(n)) %>% arrange(word1, word2, word3, desc(total))
+  
+  return(counted)
 }
 
 ################################################################################
@@ -152,17 +166,21 @@ count_all_trigrams <- function(trigrams) {
 # return
 #   a table of filtered and counted quadrigrams
 ################################################################################
-clean_quadrigrams <- function(quadrigrams, include.source) {
-  filtered <- quadrigrams %>% filter(is_word(word1) & is_word(word2) & 
+clean_4grams <- function(grams.4, include.source) {
+  filtered <- grams.4 %>% filter(is_word(word1) & is_word(word2) & 
                                        is_word(word3) & is_word(word4)) %>% 
     filter(!vowel_repeats(word1) & !vowel_repeats(word2) & 
-             !vowel_repeats(word3) & !vowel_repeats(word4)) %>%
-    filter(word1 != word2 & word2 != word3 & word3 != word4)
-  if (include.source) { filtered <- filtered %>% group_by(source, word1, word2, word3) }
-  else { filtered <- filtered %>% group_by(word1, word2, word3) }
-  counted <- filtered %>% dplyr::count(word4)
-  if (include.source) { counted %>% arrange(source, word1, word2, word3, desc(n)) }
-  else { counted %>% arrange(word1, word2, word3, desc(n)) } 
+             !vowel_repeats(word3) & !vowel_repeats(word4))
+  if (include.source) { 
+    counted <- filtered %>% dplyr::count(source, word1, word2, word3, word4) %>% 
+      arrange(source, word1, word2, word3, word4, desc(n))
+  }
+  else { 
+    counted <- filtered %>% dplyr::count(word1, word2, word3, word4) %>% 
+      arrange(word1, word2, word3, word4, desc(n))
+  }
+  
+  return(counted)
 }
 
 ################################################################################
@@ -174,9 +192,92 @@ clean_quadrigrams <- function(quadrigrams, include.source) {
 # return
 #   a table of counted quadrigrams
 ################################################################################
-count_all_quadrigrams <- function(quadrigrams) {
-  quadrigrams %>% ungroup() %>% select(-source) %>% group_by(word1, word2, word3, word4) %>% 
-    summarize(total=sum(n)) %>% arrange(desc(total), word1, word2, word3, word4)
+count_all_4grams <- function(grams.4) {
+  grams.4 %>% select(-source) %>% group_by(word1, word2, word3, word4) %>% 
+    summarize(total=sum(n)) %>% arrange(word1, word2, word3, word4, desc(total))
+}
+
+################################################################################
+# filters unneeded 5grams and counts remaining
+#
+# args
+#   5grams The unfiltered 5grams from the data
+#   include.source Whether the 5grams data have their source
+#
+# return
+#   a table of filtered and counted 5grams
+################################################################################
+clean_5grams <- function(grams.5, include.source) {
+  filtered <- grams.5 %>% filter(is_word(word1) & is_word(word2) & 
+                                   is_word(word3) & is_word(word4) & is_word(word5)) %>% 
+    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & 
+             !vowel_repeats(word3) & !vowel_repeats(word4) & !vowel_repeats(word5))
+  if (include.source) { 
+    counted <- filtered %>% dplyr::count(source, word1, word2, word3, word4, word5) %>% 
+      arrange(source, word1, word2, word3, word4, word5, desc(n))
+  }
+  else { 
+    counted <- filtered %>% dplyr::count(word1, word2, word3, word4, word5) %>% 
+      arrange(word1, word2, word3, word4, word5, desc(n))
+  }
+  
+  return(counted)
+}
+
+################################################################################
+# counts 5grams across all sources
+#
+# args
+#   grams.5 The filtered 5grams from the data
+#
+# return
+#   a table of counted 5grams
+################################################################################
+count_all_5grams <- function(grams.5) {
+  grams.5 %>% select(-source) %>% group_by(word1, word2, word3, word4, word5) %>% 
+    summarize(total=sum(n)) %>% arrange(word1, word2, word3, word4, word5, desc(total))
+}
+
+################################################################################
+# filters unneeded 6grams and counts remaining
+#
+# args
+#   6grams The unfiltered 6grams from the data
+#   include.source Whether the 6grams data have their source
+#
+# return
+#   a table of filtered and counted 6grams
+################################################################################
+clean_6grams <- function(grams.6, include.source) {
+  filtered <- grams.6 %>% filter(is_word(word1) & is_word(word2) & 
+                                   is_word(word3) & is_word(word4) & is_word(word5) & is_word(word6)) %>% 
+    filter(!vowel_repeats(word1) & !vowel_repeats(word2) & 
+             !vowel_repeats(word3) & !vowel_repeats(word4) & 
+             !vowel_repeats(word5) & !vowel_repeats(word6))
+  if (include.source) { 
+    counted <- filtered %>% dplyr::count(source, word1, word2, word3, word4, word5, word6) %>% 
+      arrange(source, word1, word2, word3, word4, word5, word6, desc(n))
+  }
+  else { 
+    counted <- filtered %>% dplyr::count(word1, word2, word3, word4, word5, word6) %>% 
+      arrange(word1, word2, word3, word4, word5, word6, desc(n))
+  }
+  
+  return(counted)
+}
+
+################################################################################
+# counts 6grams across all sources
+#
+# args
+#   grams.6 The filtered 6grams from the data
+#
+# return
+#   a table of counted 6grams
+################################################################################
+count_all_6grams <- function(grams.6) {
+  grams.6 %>% select(-source) %>% group_by(word1, word2, word3, word4, word5, word6) %>% 
+    summarize(total=sum(n)) %>% arrange(word1, word2, word3, word4, word5, word6, desc(total))
 }
 
 ################################################################################
