@@ -5,3 +5,5 @@ ngrams/
 model_data/
 rsconnect/
 *.zip
+profanity_data/
+*.txt
