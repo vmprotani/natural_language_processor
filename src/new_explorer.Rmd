@@ -12,7 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(data.table)
 library(ggplot2)
-source("new_raw_processor.R")
+#source("new_raw_processor.R")
+n <- 1:4
 tidy.dir <- out.dir
 tidy.files <- paste(tidy.dir, n, "grams.txt", sep="")
 ```
@@ -20,19 +21,31 @@ tidy.files <- paste(tidy.dir, n, "grams.txt", sep="")
 ```{r}
 plots <- list()
 for (II in n) {
+	ngram.str <- paste0(II, "gram")
 	ngrams <- fread(tidy.files[II], sep=",")
-	top <- ngrams[1:20, by=source]
+	top <- ngrams[1:20,, by=source]
 	
 	x.val <- ngrams$start
 	if (II > 1) {
 	  x.val <- paste(x.val, ngrams$end, sep="_")
 	}
-	plots[[II]] <- ggplot(ngrams, aes(x=x.val, y=count, fill=count)) + geom_bar(stat="identity") + facet_wrap(source~., nrow=3) + coord_flip() + theme(legend.position=element_blank()) + labs(x=paste(II, "gram", sep=""), y="count")
+	sep.plots[[II]] <- ggplot(ngrams, aes(x=x.val, y=count, fill=count)) + geom_bar(stat="identity") + facet_wrap(source~., nrow=3) + coord_flip() + theme(legend.position=element_blank()) + labs(x=ngram.str, y="count")
+
+	ngrams$ngram <- x.val
+	ngrams <- ngrams[,-c("start", "source")]
+	if (II > 1) {
+		ngrams <- ngrams[,-end]
+	}
+	ngrams <- [,.(count=sum(count)), by=ngram]
+	setorder(ngrams, -count, ngram)
+	ngrams <- ngrams[1:20,]
+
+	tot.plots[[II]] <- gpplot(ngrams, aes(x=ngram, y=count, fill=count)) + geom_bar(stat="identity") + coord_flip() + theme(legend.position=element_blank()) + labs(x=ngram.str, y="count")
 }
 ```
 
 ## Unigram Analysis
 
 ```{r}
-plots[[1]]
+ggarrange(sep.plots[[1], tot.plots[[1]], ncol=2)
 ```
