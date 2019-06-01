@@ -6,7 +6,7 @@ This app uses the Katz Backoff Model, an algorithm in natural language processin
 
 The app has been developed through the capstone project in [The Johns Hopkins University's Data Science specializiation on Coursera](https://www.coursera.org/specializations/jhu-data-science).
 
-## Source Code
+## Text Prediction
 
 All code used to produce the app can be found in the `src` directory. Here is a brief overview of the main files:
 
@@ -16,7 +16,9 @@ File | Description
 [new_explorer.Rmd](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_explorer.Rmd) | Renders plots showing the most important ngrams coerced from the raw text
 [new_katz_backoff.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_katz_backoff.R) | Defines the functions used to run the Katz Backoff Model algorithm
 
-The rest of the files are from the initial project. Once the files above are tested, the rest will be removed.
+The rest of the files are from the initial project. Once the files above are tested, the rest will be removed. 
+
+A preliminary analysis of the ngrams from the corpus can be found [here](https://vmprotani.github.io/natural_language_processor/).
 
 ## Credits
 
