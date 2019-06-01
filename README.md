@@ -2,9 +2,21 @@
 
 ## Overview
 
-This app uses natural language processing (NLP) to predict a user's next word based on previous input. The code is written in R, and its interface is a Shiny app.
+This app uses the Katz Backoff Model, an algorithm in natural language processing (NLP), to predict a user's next word based on previous input. The code is written in R, and its interface (to be completed) is a Shiny app.
 
 The app has been developed through the capstone project in [The Johns Hopkins University's Data Science specializiation on Coursera](https://www.coursera.org/specializations/jhu-data-science).
+
+## Source Code
+
+All code used to produce the app can be found in the `src` directory. Here is a brief overview of the main files:
+
+File | Description
+--- | ---
+[new_raw_processor.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_raw_processor.R) | Reads the raw text files (English only) and produces ngrams of 1 to 4 words
+[new_explorer.Rmd](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_explorer.Rmd) | Renders plots showing the most important ngrams coerced from the raw text
+[new_katz_backoff.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_katz_backoff.R) | Defines the functions used to run the Katz Backoff Model algorithm
+
+The rest of the files are from the initial project. Once the files above are tested, the rest will be removed.
 
 ## Credits
 
@@ -17,3 +29,5 @@ The files used to check the corpuses for profane words come from the following s
 * [German](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/blob/master/de)
 
 * [Russian](https://github.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/blob/master/ru)
+
+The ngram data used in this algorithm is derived from [the corpora](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip) provided by Johns Hopkins University and SwiftKey.
