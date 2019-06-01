@@ -1,0 +1,38 @@
+---
+title: "new_explorer"
+author: "Vince Protani"
+date: "6/1/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(data.table)
+library(ggplot2)
+source("new_raw_processor.R")
+tidy.dir <- out.dir
+tidy.files <- paste(tidy.dir, n, "grams.txt", sep="")
+```
+
+```{r}
+plots <- list()
+for (II in n) {
+	ngrams <- fread(tidy.files[II], sep=",")
+	top <- ngrams[1:20, by=source]
+	
+	x.val <- ngrams$start
+	if (II > 1) {
+	  x.val <- paste(x.val, ngrams$end, sep="_")
+	}
+	plots[[II]] <- ggplot(ngrams, aes(x=x.val, y=count, fill=count)) + geom_bar(stat="identity") + facet_wrap(source~., nrow=3) + coord_flip() + theme(legend.position=element_blank()) + labs(x=paste(II, "gram", sep=""), y="count")
+}
+```
+
+## Unigram Analysis
+
+```{r}
+plots[[1]]
+```
