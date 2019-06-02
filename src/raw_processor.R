@@ -2,12 +2,12 @@ library(readtext)
 library(quanteda)
 library(data.table)
 
+# load common variables
+source("config.R")
+
 # configure file names
 data.dir <- "../Coursera-SwiftKey/final/en_US/"
-sources <- c("blogs", "news", "twitter")
 profanity.file <- "../profanity_data/en.txt"
-exp.dir <- "../tidy_data/"
-out.dir <- "../ngrams/"
 
 files <- paste0(data.dir, "en_US.", sources, ".txt")
 index <- 1:length(files)
@@ -44,12 +44,10 @@ create_ngrams <- function(i, n) {
 	return(dt)
 }
 
-# create ngrams for 1-4 words
-n <- 1:4
-for (II in n) {
+# create ngrams for needed word groups
+for (II in num.ngrams) {
   cons <- lapply(files, file, "r")
-  out.files <- paste0(exp.dir, "en_US.", sources, ".", II, "grams.txt")
-  out.all.file <- paste0(out.dir, "en_US.", II, "grams.txt")
+  out.files <- tidy.files[seq(II,num.exp.files,4)]
   
   # read each file sectionalized
   while (TRUE) {
@@ -62,25 +60,13 @@ for (II in n) {
     if (sum(unlist(lapply(data, length))) == 0) { break }
     names(data) <- sources
     
-    # check if blogs file is finished
-    if (length(data[names(data)=="blogs"][[1]]) == 0) { 
-      data <- data[names(data)!="blogs"]
-      use.index <- 1:length(data)
-      use.out.files <- use.out.files[!grepl("blogs", use.out.files)]
-    }
-    
-    # check if news file is finished
-    if (length(data[names(data)=="news"][[1]]) == 0) {
-      data <- data[names(data)!="news"]
-      use.index <- 1:length(data)
-      use.out.files <- use.out.files[!grepl("news", use.out.files)]
-    }
-    
-    # check if twitter file is finished
-    if (length(data[names(data)=="twitter"][[1]]) == 0) {
-      data <- data[names(data)!="twitter"]
-      use.index <- 1:length(data)
-      use.out.files <- use.out.files[!grepl("twitter", use.out.files)]
+    # ignore any files that have finished being read
+    for (s in sources) {
+      if (length(data[names(data)==s][[1]]) == 0) { 
+        data <- data[names(data)!=s]
+        use.index <- 1:length(data)
+        use.out.files <- use.out.files[!grepl(s, use.out.files)]
+      }
     }
     
     # put each file's content in its own single string
@@ -88,7 +74,6 @@ for (II in n) {
     
     # create ngrams for each of these file sections
   	ngrams <- lapply(use.index, create_ngrams, n=II)
-  	
   	lapply(use.index, function(x) fwrite(ngrams[[x]], out.files[x], sep=",", 
   	                                 quote=FALSE, row.names=FALSE, 
   	                                 verbose=FALSE, append=TRUE))
@@ -115,7 +100,7 @@ for (II in n) {
   # combine all files' ngrams into one without sources
   ngrams <- rbindlist(ngrams, use.names=TRUE, fill=TRUE)
   
-  # remove bottom 95% of ngrams
+  # remove bottom 95% of ngrams (except for unigrams, which return 1 element)
   if (II > 1) { ngrams <- ngrams[count>quantile(count, 0.95),] }
   
   # count ngrams across all sources and sort
@@ -129,7 +114,7 @@ for (II in n) {
   }
   ngrams <- ngrams[,-"source"][,.(count=sum(count)), by=group.list]
   setorderv(ngrams, order.vars, order.direct)
-  fwrite(ngrams, out.all.file, sep=",", quote=FALSE, row.names=FALSE, 
+  fwrite(ngrams, ngram.files[II], sep=",", quote=FALSE, row.names=FALSE, 
          verbose=FALSE)
   
   # close and erase everything for next set of ngrams

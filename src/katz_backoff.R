@@ -1,8 +1,10 @@
 library(data.table)
 
+# load common variables
+source("config.R")
+rm(sources, tidy.files, num.exp.files)
+
 # configure global variables
-num.ngrams <- 1:4
-ngram.files <- paste0("../ngrams/en_US.", num.ngrams, "grams.txt")
 max.words  <- num.ngrams[length(num.ngrams)]-1
 backoff.prob <- 0.4
 to.predict <- 3
