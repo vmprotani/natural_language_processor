@@ -1,11 +1,11 @@
 library(data.table)
 
 # configure global variables
-num.ngrams <- 1:3
-ngram.files <- paste0("../backup/en_US.", num.ngrams, "grams.txt")
+num.ngrams <- 1:4
+ngram.files <- paste0("../ngrams/en_US.", num.ngrams, "grams.txt")
 max.words  <- num.ngrams[length(num.ngrams)]-1
 backoff.prob <- 0.4
-to.predict <- 10
+to.predict <- 3
 data <- lapply(ngram.files, fread, sep=",")
 
 # remove bulk of unigrams that won't be used
