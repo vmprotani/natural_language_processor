@@ -96,7 +96,7 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predict
     predictions <- data[[n]][!start %in% current.predictions,]
     predictions <- data[[n]][1:num.predictions,]
     predictions$probability <- predictions$count / sum(predictions$count)
-    predictions <- predictions[,-count]
+    predictions$count <- NULL
     names(predictions) <- c("prediction", "probability")
   }
   
