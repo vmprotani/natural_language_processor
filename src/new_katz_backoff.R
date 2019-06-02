@@ -53,8 +53,9 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predict
 
 		# proceed with current ngrams (at least one is found)
 		if (num.ends > 0) {
-			# calculate the probability for each word using its count
-			ngrams$probability <- ngrams$count / sum(ngrams$count)
+			# calculate the probability for each word using its updated count
+		  c <- compute_c(data[[n]], ngrams$count)
+		  ngrams$probability <- c / sum(ngrams$count)
 
 			# use the highest probable words for the prediction
 			setorder(ngrams, -probability, end)
@@ -71,7 +72,8 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predict
 				# continue if predictions were found in the (n-1)grams
 				if (sum(is.na(more.predictions)) == 0) {
 					# scale backoff predictions with backoff probability
-					more.predictions$probability <- backoff.prob * more.predictions$probability
+				  alpha <- compute_alpha(n, found, found.backoff)
+					more.predictions$probability <- alpha * more.predictions$probability
 
 					# include new predictions with current predictions
 					predictions <- rbind(predictions, more.predictions)
@@ -92,7 +94,8 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predict
 	else {
 		predictions <- data[[n]][!start %in% current.predictions,]
 		predictions <- data[[n]][1:num.predictions,]
-		predictions$probability <- predictions$count / sum(predictions$count)
+		c <- compute_c(data[[n]], predictions$count)
+		predictions$probability <- c / sum(predictions$count)
 		predictions <- predictions[,-count]
 		names(predictions) <- c("prediction", "probability")
 	}
