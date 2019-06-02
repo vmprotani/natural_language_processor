@@ -8,6 +8,9 @@ backoff.prob <- 0.4
 to.predict <- 10
 data <- lapply(ngram.files, fread, sep=",")
 
+# remove bulk of unigrams that won't be used
+data[[1]] <- data[[1]][1:to.predict,]
+
 ################################################################################
 # runs the Katz Backoff algorithm
 #
