@@ -116,6 +116,8 @@ for (II in n) {
   
   # combine all files' ngrams into one without sources
   ngrams <- rbindlist(ngrams, use.names=TRUE, fill=TRUE)
+  # remove all ngrams that only appear once
+  ngrams <- ngrams[count!=1,]
   group.list <- c("start")
   order.vars <- c("count", "start")
   order.direct <- c(-1, 1)
