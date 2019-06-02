@@ -1,188 +1,188 @@
+library(data.table)
+
+# configure global variables
+num.ngrams <- 1:4
+ngram.files <- paste0("../ngrams/en_US.", num.ngrams, "grams.txt")
+max.words  <- num.ngrams[length(num.ngrams)]-1
+backoff.prob <- 0.4
+to.predict <- 3
+data <- lapply(ngram.files, fread, sep=",")
+
+# remove bulk of unigrams that won't be used
+data[[1]] <- data[[1]][1:to.predict,]
+
 ################################################################################
-# begins the Katz Backoff Model algorithm
+# runs the Katz Backoff algorithm
 #
 # args
-#   input User string input
+#   input Uncleaned user input
 #
 # returns
-#   A word prediction based on the input
+#   Finalized data table of predictions and their probabilities
 ################################################################################
 run_backoff <- function(input) {
-  ngram <- clean_input(input)
-  num.words <- length(ngram)
+  cleaned <- clean_input(input)
+  ngram <- cleaned[[1]]
+  num.words <- cleaned[[2]]
+  if (num.words == 0) { return(NA) }
   
-  if (num.words == 0 ) {
-    return(NULL)
-  }
-  
-  prediction <- find_in_ngram(ngram, num.words+1, 3)
-  
-  return(prediction)
+  predictions <- find_in_ngrams(ngram, num.words+1)
+  return(predictions)
 }
 
 ################################################################################
-# looks for an ngram in the quadrigrams data
+# searches ngrams for matches to user input to find a word to predict
 #
 # args
-#   input User string input
+#   input User input formatted to match beginning of ngrams
+#   n Number of words in current set of ngrams (e.g., 3 for trigrams)
+#   num.predictions Number of words to return as predictions
+#   current.predictions Words already chosen to predict
 #
 # returns
-#   The word prediction based on input
+#   Data table of predictions and probabilities from current ngrams
 ################################################################################
-find_in_ngram <- function(input, n, needed.pred) {
-  # find matching ngrams
-  found.index <- get_found(input, n)
-  if (sum(is.na(found.index)) >= 1) { return(NULL) }
-  found.ngrams <- data[[n]][found.index,]
-  num.ends.found <- NROW(found.ngrams)
-  
-  # input with first word removed in case of backoff
-  backoff.input <- input[-1]
-  
-  # at least one matching ngram is found
-  if (num.ends.found > 0) {
-    end.words <- 1:min(needed.pred, num.ends.found)
+find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predictions=NA) {
+  predictions <- data.table(prediction=NA, probability=NA)
+  if (n > 1) {
+    # find ngrams matching the input
+    found <- get_found(input, n)
+    ngrams <- data[[n]][found,]
+    num.ends <- NROW(ngrams)
     
-    # calculate the count considering unobserved ngrams
-    c <- compute_c(data[[n]], found.ngrams[end.words,]$total)
-    c <- lapply(end.words, 
-           function(x) if (is.na(c[x]) | c[x] == 0 | c[x] == Inf) { found.ngrams[x,]$total } 
-           else { c[x] }) %>% unlist()
-    # calculate the probability using the count
-    p.bo <- c / sum(found.ngrams$total)
+    # store input with first word removed in case of backoff
+    backoff.input <- gsub("^[a-z\'-]+_", "", input)
+    found.backoff <- get_found(backoff.input, n-1)
     
-    prediction <- tibble(word=found.ngrams[[NCOL(found.ngrams)-1]][end.words], prob=p.bo)
-    if (NROW(prediction) != needed.pred) {
-      more_predictions <- find_in_ngram(backoff.input, n-1, needed.pred-NROW(prediction))
-      if (!sum(is.na(more_predictions)) >=1) {
-        prediction <- bind_rows(prediction, more_predictions)
+    # proceed with current ngrams (at least one is found)
+    if (num.ends > 0) {
+      # calculate the probability for each word using its count
+      ngrams$probability <- ngrams$count / sum(ngrams$count)
+      
+      # use the highest probable words for the prediction
+      setorder(ngrams, -probability, end)
+      end.words <- 1:min(num.predictions, num.ends)
+      predictions <- ngrams[end.words,]
+      predictions <- predictions[,c("end", "probability")]
+      names(predictions) <- c("prediction", "probability")
+      predictions <- predictions[!prediction %in% current.predictions,]
+      
+      # search for more predictions in (n-1)grams if the number needed was not met
+      if (NROW(predictions) != num.predictions) {
+        more.predictions <- find_in_ngrams(backoff.input, n-1, num.predictions-NROW(predictions), predictions$prediction)
+        
+        # continue if predictions were found in the (n-1)grams
+        if (sum(is.na(more.predictions)) == 0) {
+          # scale backoff predictions with backoff probability
+          more.predictions$probability <- backoff.prob * more.predictions$probability
+          
+          # include new predictions with current predictions
+          predictions <- rbind(predictions, more.predictions)
+        }
       }
     }
+    # backoff if no matching ngrams are found
+    else {
+      predictions <- find_in_ngrams(backoff.input, n-1, num.predictions, current.predictions)
+      
+      # use backoff probability if any (n-1)grams were found
+      if (sum(is.na(predictions)) == 0) {
+        predictions$probability <- backoff.prob * predictions$probability
+      }
+    }	
   }
-  # no matching ngrams were found
+  # if unigrams are reached, just return the number of most frequent needed
   else {
-    prediction <- find_in_ngram(backoff.input, n-1, needed.pred)
-    
-    found.backoff <- get_found(backoff.input, n-1)
-    prediction$prob <- compute_alpha(data[[n]], found.index, found.backoff) * prediction$prob
+    predictions <- data[[n]][!start %in% current.predictions,]
+    predictions <- data[[n]][1:num.predictions,]
+    predictions$probability <- predictions$count / sum(predictions$count)
+    predictions <- predictions[,-count]
+    names(predictions) <- c("prediction", "probability")
   }
   
-  prediction <- arrange(prediction, desc(prob))
-  return(prediction)
+  setorder(predictions, -probability, prediction)
+  return(predictions)
 }
 
 ################################################################################
-# computes Good-Turing discount estimate
+# computes the count for final words in an ngram considering unobserved ngrams
 #
 # args
-#   ngrams Table of ngrams to consider
-#   count Number of times the found ngram has occurred
+#   ngrams Current set of ngrams being used
+#   counts Vector of frecuencies for end words with input matching the beginning
 #
 # returns
-#   Good-Turing discount estimate, the count estimate considering unobserved
-#   ngrams
+#   Numeric vector of new count values considering unobserved ngrams
 ################################################################################
-compute_c <- function(ngrams, count) {
-  N.plus <- lapply(count, function(x) NROW(with(ngrams, ngrams[total==x+1,]))) %>% unlist()
-  N <- lapply(count, function(x) NROW(with(ngrams, ngrams[total==x,]))) %>% unlist()
+compute_c <- function(ngrams, counts) {
+  N.plus <- unlist(lapply(counts, function(n) NROW(ngrams[count==n+1,])))
+  N <- unlist(lapply(counts, function(n) NROW(ngrams[count==n,])))
   
-  new.c <- (count+1)*N.plus/N
+  c <- (counts+1)*N.plus/N
+  c <- unlist(lapply(1:length(counts), function(x) if (is.na(c[x]) | c[x]==0 | c[x]==Inf) { counts[x] } else { c[x] }))
   
-  return(new.c)
+  return(c)
 }
 
 ################################################################################
-# computes backoff weight
+# computes alpha in the case that a backoff needs to be performed
 #
 # args
-#   n N in ngrams to consider
-#   found.index Logical vector of which rows have the found ngram from input
-#   found.backoff Logical vector for the found (n-1)grams from input
+#   n Number of words in current set of ngrams (e.g., 3 for trigrams)
+#   found Logical vector indicating which rows match user input in the ngrams
+#   found.backoff Logical vector indicating which match user input in (n-1)grams
 #
 # returns
-#   Backoff weight by which to multiply probably of a prediction found by
-#   backing off
+#   Scalar to multiply the backoff probability by
 ################################################################################
-compute_alpha <- function(n, found.index, found.backoff) {
-  #beta <- 1 - 
-  #  sum(compute_c(data[[n]], data[[n]][found.index,]$total)) / sum(data[[n]][found.index,]$total)
+compute_alpha <- function(n, found, found.backoff) {
+  beta <- 1 - sum(compute_c(data[[n]], data[[n]][found,]$count)) / sum(data[[n]][found,]$count)
   
-  # finish alpha computation
-  return(0.4)
+  # only consider probability of words in backoff that don't appear in the current ngrams
+  backoffs <- data[[n-1]][found.backoff,]
+  if ((n-1) > 1) {
+    backoffs <- backoffs[!end %in% data[[n]]$end,]
+    if (NROW(backoffs) > 1) {
+      c.backoff <- compute_c(data[[n-1]], backoffs$count)
+      backoffs$probability <- c.backoff / sum(backoffs$count)
+      alpha <- beta / sum(backoffs$probability)
+    }
+    else {
+      alpha <- backoff.prob
+    }
+  }
+  else {
+    alpha <- backoff.prob
+  }
+  
+  return(alpha)
 }
 
-################################################################################
-# gets ngrams where the first n-1 words match the input
-#
-# args
-#   input User string input
-#   n Number of words in ngrams to consider
-#
-# returns
-#   Logical vector for which rows have matching ngrams
-################################################################################
 get_found <- function(input, n) {
-  if (n == 6) {
-    found.index <- with(data[[n]], word1==input[1] & word2==input[2] & word3==input[3] & 
-                          word4==input[4] & word5==input[5])
-  }
-  else if (n == 5) {
-    found.index <- with(data[[n]], word1==input[1] & word2==input[2] & word3==input[3] & 
-                          word4==input[4])
-  }
-  else if (n == 4) {
-    found.index <- with(data[[n]], word1==input[1] & word2==input[2] & word3==input[3])
-  }
-  else if (n == 3) {
-    found.index <- with(data[[n]], word1==input[1] & word2==input[2])
-  }
-  else if (n == 2) {
-    found.index <- with(data[[n]], word1==input[1])
-  }
-  else if (n ==1 ) {
-    found.index <- rep(TRUE, NROW(data[[n]]))
-  }
-  else {
-    found.index <- NULL
-  }
+  index <- data[[n]]$start == input
   
-  return(found.index)
+  return(index)
 }
 
 ################################################################################
-# turns user input into an ngram of at most 3 words
+# formats user input to match the (n-1)grams in the source data
 #
 # args
-#   input User string input
+#   input User input
 #
 # returns
-#   The user input converted into an ngram
+#   User input formatted to match ngram data
+#   Number of words in user input
 ################################################################################
 clean_input <- function(input) {
-  separate.input <- unlist(strsplit(input, "[^A-Za-z\'-]+"))
-  last <- length(separate.input)
-  first <- max(1, max(1, last-(max.words-1)))
+  separated.input <- unlist(strsplit(input, "[^A-Za-z\'-]+"))
+  last <- length(separated.input)
+  first <- max(1, last-(max.words-1))
   
-  tidy.input <- separate.input[first:last]
-  tidy.input <- gsub("[-\']", "", tidy.input)
+  tidy.input <- separated.input[first:last]
+  num.words <- length(tidy.input)
+  tidy.input <- paste(tidy.input, collapse="_")
   
-  return(tidy.input)
+  ret <- list(tidy.input, num.words)
+  return(ret)
 }
-
-################################################################################
-# reads data from the ngram source files
-
-# returns
-#   Ngram source data
-################################################################################
-read_data <- function() {
-  ngrams <- c("1grams", "2grams", "3grams", "4grams", "5grams", "6grams")
-  files <- paste("../ngrams/", ngrams, ".txt", sep="")
-  
-  data <- lapply(files, read.table, header=TRUE, sep="\t", fill=TRUE, quote="", stringsAsFactors=FALSE)
-  data <- lapply(data, as_tibble)
-  
-  return(data)
-}
-max.words <- 5
-data <- read_data()

@@ -12,9 +12,9 @@ All code used to produce the app can be found in the `src` directory. Here is a 
 
 File | Description
 --- | ---
-[new_raw_processor.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_raw_processor.R) | Reads the raw text files (English only) and produces ngrams of 1 to 4 words
+[raw_processor.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/raw_processor.R) | Reads the raw text files (English only) and produces ngrams of 1 to 4 words
 [new_explorer.Rmd](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_explorer.Rmd) | Renders plots showing the most important ngrams coerced from the raw text
-[new_katz_backoff.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_katz_backoff.R) | Defines the functions used to run the Katz Backoff Model algorithm
+[katz_backoff.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/katz_backoff.R) | Defines the functions used to run the Katz Backoff Model algorithm
 
 The rest of the files are from the initial project. Once the files above are tested, the rest will be removed. 
 
