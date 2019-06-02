@@ -5,8 +5,6 @@ library(data.table)
 # configure file names
 data.dir <- "../Coursera-SwiftKey/final/en_US/"
 sources <- c("blogs", "news", "twitter")
-#data.dir <- "../"
-#sources <- c("ex1", "ex2")
 profanity.file <- "../profanity_data/en.txt"
 exp.dir <- "../tidy_data/"
 out.dir <- "../ngrams/"
@@ -116,8 +114,11 @@ for (II in n) {
   
   # combine all files' ngrams into one without sources
   ngrams <- rbindlist(ngrams, use.names=TRUE, fill=TRUE)
-  # remove all ngrams that only appear once
-  ngrams <- ngrams[count!=1,]
+  
+  # remove bottom 95% of ngrams
+  if (II > 1) { ngrams <- ngrams[count>quantile(count, 0.95),] }
+  
+  # count ngrams across all sources and sort
   group.list <- c("start")
   order.vars <- c("count", "start")
   order.direct <- c(-1, 1)
