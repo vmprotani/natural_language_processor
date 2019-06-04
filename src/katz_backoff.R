@@ -1,34 +1,33 @@
 library(data.table)
 
 # load common variables
-source("config.R")
+source("../config.R")
 rm(sources, tidy.files, num.tidy.files)
 
 # configure global variables
 max.words  <- num.ngrams[length(num.ngrams)]-1
-backoff.prob <- 0.4
-to.predict <- 3
 data <- lapply(ngram.files, fread, sep=",")
-
-# remove bulk of unigrams that won't be used
-data[[1]] <- data[[1]][1:to.predict,]
 
 ################################################################################
 # runs the Katz Backoff algorithm
 #
 # args
 #   input Uncleaned user input
+#   to.prediction Number of words to output as predictions
 #
 # returns
 #   Finalized data table of predictions and their probabilities
 ################################################################################
-run_backoff <- function(input) {
+run_backoff <- function(input, to.predict=3, backoff.prob=0.4) {
   cleaned <- clean_input(input)
   ngram <- cleaned[[1]]
   num.words <- cleaned[[2]]
   if (num.words == 0) { return(NA) }
   
-  predictions <- find_in_ngrams(ngram, num.words+1)
+  # remove bulk of unigrams that won't be used
+  data[[1]] <- data[[1]][1:to.predict,]
+  
+  predictions <- find_in_ngrams(ngram, num.words+1, to.predict, backoff.prob=backoff.prob)
   return(predictions)
 }
 
@@ -44,7 +43,7 @@ run_backoff <- function(input) {
 # returns
 #   Data table of predictions and probabilities from current ngrams
 ################################################################################
-find_in_ngrams <- function(input, n, num.predictions=to.predict, prev.predictions=NA) {
+find_in_ngrams <- function(input, n, num.predictions, prev.predictions=NA, backoff.prob) {
   predictions <- data.table(prediction=NA, probability=NA)
   if (n > 1) {
     # find ngrams matching the input
@@ -65,6 +64,9 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, prev.prediction
       predictions <- predictions[,c("end", "probability")]
       names(predictions) <- c("prediction", "probability")
       predictions <- predictions[!(prediction %in% prev.predictions),]
+      
+      # label which ngrams predictions were found
+      predictions$n <- n
       
       # search for more predictions in (n-1)grams if the number needed was not met
       if (NROW(predictions) != num.predictions) {
@@ -98,6 +100,7 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, prev.prediction
     predictions$probability <- predictions$count / sum(predictions$count)
     predictions$count <- NULL
     names(predictions) <- c("prediction", "probability")
+    predictions$n <- n
   }
   
   setorder(predictions, -probability, prediction)
