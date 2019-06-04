@@ -2,7 +2,7 @@ library(data.table)
 
 # load common variables
 source("config.R")
-rm(sources, tidy.files, num.exp.files)
+rm(sources, tidy.files, num.tidy.files)
 
 # configure global variables
 max.words  <- num.ngrams[length(num.ngrams)]-1
@@ -39,22 +39,20 @@ run_backoff <- function(input) {
 #   input User input formatted to match beginning of ngrams
 #   n Number of words in current set of ngrams (e.g., 3 for trigrams)
 #   num.predictions Number of words to return as predictions
-#   current.predictions Words already chosen to predict
+#   prev.predictions Words already chosen to predict
 #
 # returns
 #   Data table of predictions and probabilities from current ngrams
 ################################################################################
-find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predictions=NA) {
+find_in_ngrams <- function(input, n, num.predictions=to.predict, prev.predictions=NA) {
   predictions <- data.table(prediction=NA, probability=NA)
   if (n > 1) {
     # find ngrams matching the input
-    found <- get_found(input, n)
-    ngrams <- data[[n]][found,]
+    ngrams <- get_found(input, n)
     num.ends <- NROW(ngrams)
     
-    # store input with first word removed in case of backoff
+    # store input with first word removed in case of backoff and find matches
     backoff.input <- gsub("^[a-z\'-]+_", "", input)
-    found.backoff <- get_found(backoff.input, n-1)
     
     # proceed with current ngrams (at least one is found)
     if (num.ends > 0) {
@@ -63,15 +61,15 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predict
       
       # use the highest probable words for the prediction
       setorder(ngrams, -probability, end)
-      end.words <- 1:min(num.predictions, num.ends)
-      predictions <- ngrams[end.words,]
+      predictions <- ngrams[1:min(num.predictions, num.ends),]
       predictions <- predictions[,c("end", "probability")]
       names(predictions) <- c("prediction", "probability")
-      predictions <- predictions[!prediction %in% current.predictions,]
+      predictions <- predictions[!(prediction %in% prev.predictions),]
       
       # search for more predictions in (n-1)grams if the number needed was not met
       if (NROW(predictions) != num.predictions) {
-        more.predictions <- find_in_ngrams(backoff.input, n-1, num.predictions-NROW(predictions), predictions$prediction)
+        current.predictions <- c(predictions$prediction, prev.predictions)
+        more.predictions <- find_in_ngrams(backoff.input, n-1, num.predictions-NROW(predictions), current.predictions)
         
         # continue if predictions were found in the (n-1)grams
         if (sum(is.na(more.predictions)) == 0) {
@@ -85,7 +83,7 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predict
     }
     # backoff if no matching ngrams are found
     else {
-      predictions <- find_in_ngrams(backoff.input, n-1, num.predictions, current.predictions)
+      predictions <- find_in_ngrams(backoff.input, n-1, num.predictions, prev.predictions)
       
       # use backoff probability if any (n-1)grams were found
       if (sum(is.na(predictions)) == 0) {
@@ -95,7 +93,7 @@ find_in_ngrams <- function(input, n, num.predictions=to.predict, current.predict
   }
   # if unigrams are reached, just return the number of most frequent needed
   else {
-    predictions <- data[[n]][!start %in% current.predictions,]
+    predictions <- data[[n]][!(start %in% prev.predictions),]
     predictions <- data[[n]][1:num.predictions,]
     predictions$probability <- predictions$count / sum(predictions$count)
     predictions$count <- NULL
@@ -143,7 +141,7 @@ compute_alpha <- function(n, found, found.backoff) {
   # only consider probability of words in backoff that don't appear in the current ngrams
   backoffs <- data[[n-1]][found.backoff,]
   if ((n-1) > 1) {
-    backoffs <- backoffs[!end %in% data[[n]]$end,]
+    backoffs <- backoffs[!(end %in% data[[n]]$end),]
     if (NROW(backoffs) > 1) {
       c.backoff <- compute_c(data[[n-1]], backoffs$count)
       backoffs$probability <- c.backoff / sum(backoffs$count)
@@ -160,10 +158,18 @@ compute_alpha <- function(n, found, found.backoff) {
   return(alpha)
 }
 
+################################################################################
+# finds ngrams whose beginning matches the user's input
+#
+# args
+#   input User input
+#   n N in ngrams to search
+#
+# returns
+#   Data table containing ngrams with user's input in the start of the phrase
+################################################################################
 get_found <- function(input, n) {
-  index <- data[[n]]$start == input
-  
-  return(index)
+  return(data[[n]][which(start==input),])
 }
 
 ################################################################################
