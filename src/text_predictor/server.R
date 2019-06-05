@@ -46,6 +46,9 @@ shinyServer(function(input, output) {
         r
     }, options=NULL)
     
+    output$sample.input <- renderText({ "have a great" })
+    output$sample.output <- renderText({ "day\t0.287988924\t4" })
+    
 })
 
 ################################################################################
@@ -111,7 +114,7 @@ find_in_ngrams <- function(input, n, num.predictions, prev.predictions=NA, backo
             # search for more predictions in (n-1)grams if the number needed was not met
             if (NROW(predictions) != num.predictions) {
                 current.predictions <- c(predictions$prediction, prev.predictions)
-                more.predictions <- find_in_ngrams(backoff.input, n-1, num.predictions-NROW(predictions), current.predictions)
+                more.predictions <- find_in_ngrams(backoff.input, n-1, num.predictions-NROW(predictions), current.predictions, backoff.prob)
                 
                 # continue if predictions were found in the (n-1)grams
                 if (sum(is.na(more.predictions)) == 0) {
@@ -125,7 +128,7 @@ find_in_ngrams <- function(input, n, num.predictions, prev.predictions=NA, backo
         }
         # backoff if no matching ngrams are found
         else {
-            predictions <- find_in_ngrams(backoff.input, n-1, num.predictions, prev.predictions)
+            predictions <- find_in_ngrams(backoff.input, n-1, num.predictions, prev.predictions, backoff.prob)
             
             # use backoff probability if any (n-1)grams were found
             if (sum(is.na(predictions)) == 0) {
@@ -174,11 +177,12 @@ compute_c <- function(ngrams, counts) {
 #   n Number of words in current set of ngrams (e.g., 3 for trigrams)
 #   found Logical vector indicating which rows match user input in the ngrams
 #   found.backoff Logical vector indicating which match user input in (n-1)grams
+#   backoff.prob Probability factor for backing down to (n-1)grams
 #
 # returns
 #   Scalar to multiply the backoff probability by
 ################################################################################
-compute_alpha <- function(n, found, found.backoff) {
+compute_alpha <- function(n, found, found.backoff, backoff.prob) {
     beta <- 1 - sum(compute_c(data[[n]], data[[n]][found,]$count)) / sum(data[[n]][found,]$count)
     
     # only consider probability of words in backoff that don't appear in the current ngrams
