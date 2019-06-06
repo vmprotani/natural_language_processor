@@ -12,40 +12,62 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(data.table)
 library(ggplot2)
-#source("new_raw_processor.R")
+library(ggpubr)
 n <- 1:4
-tidy.dir <- out.dir
-tidy.files <- paste(tidy.dir, n, "grams.txt", sep="")
+sources <- c("blogs", "news", "twitter")
 ```
 
 ```{r}
-plots <- list()
+sep.plots <- list()
+tot.plots <- list()
 for (II in n) {
+  ngram.files <- paste0("../tidy_data/en_US.", sources, ".", II, "grams.txt")
 	ngram.str <- paste0(II, "gram")
-	ngrams <- fread(tidy.files[II], sep=",")
-	top <- ngrams[1:20,, by=source]
 	
-	x.val <- ngrams$start
+	ngrams <- lapply(ngram.files, fread, sep=",")
+  ngrams <- Reduce("rbind", ngrams)
+	
 	if (II > 1) {
-	  x.val <- paste(x.val, ngrams$end, sep="_")
+	  ngrams$ngram <- paste(ngrams$start, ngrams$end, sep="_")
 	}
-	sep.plots[[II]] <- ggplot(ngrams, aes(x=x.val, y=count, fill=count)) + geom_bar(stat="identity") + facet_wrap(source~., nrow=3) + coord_flip() + theme(legend.position=element_blank()) + labs(x=ngram.str, y="count")
+  else {
+    ngrams$ngram <- ngrams$start
+  }
+  ngrams$start <- NULL
+	top <- ngrams[,head(.SD, 10), by=source]
+	sep.plots[[II]] <- ggplot(top, aes(x=ngram, y=count, fill=count)) + geom_bar(stat="identity") + facet_wrap(source~., nrow=3) + coord_flip() + theme(legend.position="none") + labs(x=ngram.str, y="count")
 
-	ngrams$ngram <- x.val
-	ngrams <- ngrams[,-c("start", "source")]
-	if (II > 1) {
-		ngrams <- ngrams[,-end]
-	}
-	ngrams <- [,.(count=sum(count)), by=ngram]
+	ngrams$source <- NULL
+	if (II > 1) { ngrams$end <- NULL }
+	ngrams <- ngrams[,.(count=sum(count)), by=ngram]
 	setorder(ngrams, -count, ngram)
 	ngrams <- ngrams[1:20,]
 
-	tot.plots[[II]] <- gpplot(ngrams, aes(x=ngram, y=count, fill=count)) + geom_bar(stat="identity") + coord_flip() + theme(legend.position=element_blank()) + labs(x=ngram.str, y="count")
+	tot.plots[[II]] <- ggplot(ngrams, aes(x=ngram, y=count, fill=count)) + geom_bar(stat="identity") + coord_flip() + theme(legend.position="none") + labs(x=ngram.str, y="count", title="all sources")
 }
 ```
 
 ## Unigram Analysis
 
 ```{r}
-ggarrange(sep.plots[[1], tot.plots[[1]], ncol=2)
+ggarrange(sep.plots[[1]], tot.plots[[1]], ncol=2)
 ```
+
+## Bigram Analysis
+
+```{r}
+ggarrange(sep.plots[[2]], tot.plots[[2]], ncol=2)
+```
+
+## Trigram Analysis
+
+```{r}
+ggarrange(sep.plots[[3]], tot.plots[[3]], ncol=2)
+```
+
+## Quadrigram Analysis
+
+```{r}
+ggarrange(sep.plots[[4]], tot.plots[[4]], ncol=2)
+```
+
