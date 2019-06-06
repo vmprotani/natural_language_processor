@@ -2,7 +2,7 @@
 
 ## Overview
 
-This app uses the Katz Backoff Model, an algorithm in natural language processing (NLP), to predict a user's next word based on previous input. The code is written in R, and its interface (to be completed) is a Shiny app.
+This app uses the Katz Backoff Model, an algorithm in natural language processing (NLP), to predict a user's next word based on previous input. The code is written in R, and its interface is a Shiny app, which can be accessed [here](https://vmprotani.shinyapps.io/text_predictor).
 
 The app has been developed through the capstone project in [The Johns Hopkins University's Data Science specializiation on Coursera](https://www.coursera.org/specializations/jhu-data-science).
 
