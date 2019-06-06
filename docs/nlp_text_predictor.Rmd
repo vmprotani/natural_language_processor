@@ -22,11 +22,11 @@ ngrams <- lapply(ngram.files, fread, sep=",")
 
 This app implements a stupid Katz back-off algorithm to predict user text given some input. The predictions come from datasets of ngrams ranging from 1 to 4 words. These ngrams were derived from [the corpus provided by Johns Hopkins University and SwiftKey](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip) through Coursera.
 
-This app's emphasis is quickly predicting a word and demonstrating the algorithm rather than to be as accurate as possible for all users.
+This app's emphasis is quickly predicting a word and demonstrating the algorithm rather than being as accurate as possible for all users.
 
 ## Data
 
-The data at the time of publication of this app is roughly 150 MB of ngrams ranging from 1 to 4 words. All ngrams occurring only once are ignored to save memory. In the datasets, information looks like the following for bigrams and quadrigrams:
+The data at the time of publication of this app is roughly 150 MB of ngrams ranging from 1 to 4 words. All ngrams occurring only once are ignored to save memory. Here are snippets of the bigrams and quadrigrams data:
 
 ```{r echo=FALSE}
 head(ngrams[[2]],2)
@@ -37,7 +37,7 @@ The beginning of the ngram is stored separately from the last word. Each unique 
 
 ## Katz Backoff Algorithm
 
-This app uses a modified Katz back-off algorithm to enhance speed and enable multiple predictions. This app's algorithm does not consider the "discount" probability introduced in the standard model, and so it does not consider unobserved ngrams when assigning probabilities to predictions.
+This app uses a modified Katz back-off algorithm to enhance speed and enable multiple predictions. The app's algorithm does not consider the "discount" probability introduced in the standard model, and so it does not consider unobserved ngrams when assigning probabilities to predictions.
 
 Further, it substitutes `r 0.4` for the "backoff" probability rather than sacrificing computation time to more accurately scale probabilities of predictions from lesser ngrams. With these modifications, this app's algorithm looks like this:
 
@@ -64,13 +64,13 @@ Simply type in the text box, hit Submit, and see the prediction. Documentation i
 
 ## Performance Analysis
 
-To get an idea of the app's performance, it has been put through a test set of a few thousand inputs with respective correct next words. The results show the app's accuracy and speed.
+To get an idea of the app's performance, it has been put through a test set of a few thousand inputs with their respective correct next words to compare output. The results show the app's accuracy and speed.
 
 ```{r echo=FALSE}
 run_tests(3)
 ```
 
-When outputting 3 predictions, only 20% of prediction sets had the correct answer, and the average runtime of the prediction was 0.04 seconds. There is a tradeoff here between accuracy and time: an algorithm with fewer ngrams drawn from the data and less computation gives less accurate predictions but does so more quickly. Using more data or using the computations from the Katz back-off model could improve the accuracy but will slow the application down.
+When outputting 3 predictions, only 20% of prediction sets had the correct answer, and the average runtime of the predictions was 0.04 seconds. There is a tradeoff here between accuracy and time: an algorithm with fewer ngrams drawn from the data and less computation gives less accurate predictions but does so more quickly. Using more data or using the computations from the Katz back-off model could improve the accuracy but will slow the application down.
 
 ## Looking Forward
 

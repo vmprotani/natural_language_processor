@@ -26,7 +26,7 @@ shinyUI(fluidPage(theme=shinytheme("slate"),
         # Show a plot of the generated distribution
         mainPanel(
             tabsetPanel(
-                tabPanel("Predictions",
+                tabPanel("Prediction",
                          h2(textOutput("top.str")),
                          verbatimTextOutput("top")
                 ),
@@ -35,9 +35,9 @@ shinyUI(fluidPage(theme=shinytheme("slate"),
                          p("This application uses a Katz Backoff model to predict user text from previous input. It utilizes datasets of ngrams of sizes 1 through 4 words."),
                          p("The output of the backoff model consists of predicted words, their respective probabilities, and the number of words in the ngrams where the prediction is found. For example, if the user types"),
                          verbatimTextOutput("sample.input"),
-                         p("behind the scenes, the top chosen number predictions will look like"),
+                         p("behind the scenes, the top predictions this pattern:"),
                          verbatimTextOutput("sample.output"),
-                         p("which means the word \"day\" has a roughly 28% probability of being the next word, and it was found in the 4grams data. Then the user sees"), 
+                         p("which means the word \"day\" has a roughly 28% probability of being the next word, and it was found in the quadrigrams data. Then the user sees"), 
                          verbatimTextOutput("sample.prediction"),
                          p("in the prediction box. Note that since this is a \"stupid\" Katz Backoff implementation, these probabilities will not add up perfectly to 1."),
                          h2("How to Use"),
