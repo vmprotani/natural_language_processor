@@ -16,8 +16,15 @@ library(ggpubr)
 n <- 1:4
 sources <- c("blogs", "news", "twitter")
 ```
+## Introduction
+
+This documnet explores the training data for the text prediction application using a modified Katz back-off model. The data consists of ngrams between 1 and 4 words derived from a corpora provided by Johns Hopkins University. The entire corpora was used to create the ngrams. The resulting files composed over 4 GB worth of data, so ngrams with a frequency of 1 are removed. The resulting used space is roughly 150 MB. 
+
+All source code and references can be found in [this project's repository](https://github.com/vmprotani/natural_language_processor/).
 
 ## Creating Plots from Ngram Data
+
+We look at the ngrams two ways: frequency from their respective sources (blogs, news, or twitter), and then all together. Only the top few ngrams are shown.
 
 ```{r}
 sep.plots <- list()
@@ -72,4 +79,12 @@ ggarrange(sep.plots[[3]], tot.plots[[3]], ncol=2)
 ```{r echo=FALSE}
 ggarrange(sep.plots[[4]], tot.plots[[4]], ncol=2)
 ```
+## Observations
 
+Though it may be tempting to remove stop words from predictions, from the above graphs, we can see how frequent they are. Therefore, it would be inaccurate to ignore them when predicting words. As can be assumed from these graphs, numbers have been removed since they provide little to no help in predictions; "two weeks later" is just as probable as three, five, or ten weeks later. Including the restriction on ngrams occurring only one time, our datasets are concise and provide a snapshot of natural language to feed the algorithm.
+
+## Planned Model
+
+This application will implement a Katz back-off model. To find predictions, the user's input will be compared against the beginnings of ngrams and the most frequent endings to those endgrams will become predictions. For example, if the user enters "today has been such a great," the app will take "such a great" (given the order of ngrams is 4, which begin with 3 words) and compare that against the quadrigrams for matches. If none are found, "a great" will be searched for in the trigrams. This back-off is performed until a prediction is found.
+
+Though this method can eliminate a lot of the context in sentences that make them make sense - i.e. subject-verb relationships can be ignored - it is an efficient way to search a large body of text for possible predictions.
