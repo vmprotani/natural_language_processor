@@ -84,6 +84,6 @@ This application was created as part of the capstone in [the Johns Hopkins Unive
 
 The application can be accessed [here](). Documentation is available on-site.
 
-The source code and resources for the app can be found [on GitHub](https://github.com/vmprotani/natural_language_processor). There is also a short presentation of exploratory data analysis linked on this page. This repository also includes the test script and test data used to perform analysis on the app.
+The source code and resources for the app can be found [on GitHub](https://github.com/vmprotani/text_predictor). There is also a short presentation of exploratory data analysis linked on this page. This repository also includes the test script and test data used to perform analysis on the app.
 
 More information about the Katz back-off model can be found [here](https://en.wikipedia.org/wiki/Katz%27s_back-off_model).
