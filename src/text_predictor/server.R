@@ -36,7 +36,7 @@ shinyServer(function(input, output) {
         })
         
         output$top.str <- renderText({
-            paste("Top prediction using", r$n[1], "ngrams")
+            paste("Top prediction (found in ngrams of", r$n[1], " words)")
         })
         
         output$all.str <- renderText({
