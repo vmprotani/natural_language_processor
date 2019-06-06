@@ -1,5 +1,5 @@
 ---
-title: "new_explorer"
+title: "Text Predictor Exploratory Analysis"
 author: "Vince Protani"
 date: "6/1/2019"
 output: html_document
@@ -15,12 +15,13 @@ library(ggplot2)
 library(ggpubr)
 n <- 1:4
 sources <- c("blogs", "news", "twitter")
+num.sources <- length(sources)
 ```
 ## Introduction
 
 This documnet explores the training data for the text prediction application using a modified Katz back-off model. The data consists of ngrams between 1 and 4 words derived from a corpora provided by Johns Hopkins University. The entire corpora was used to create the ngrams. The resulting files composed over 4 GB worth of data, so ngrams with a frequency of 1 are removed. The resulting used space is roughly 150 MB. 
 
-All source code and references can be found in [this project's repository](https://github.com/vmprotani/natural_language_processor/).
+All source code and references can be found in [this project's repository](https://github.com/vmprotani/text_predictor/).
 
 ## Creating Plots from Ngram Data
 
@@ -34,25 +35,36 @@ for (II in n) {
 	ngram.str <- paste0(II, "gram")
 	
 	ngrams <- lapply(ngram.files, fread, sep=",")
-  ngrams <- Reduce("rbind", ngrams)
-	
 	if (II > 1) {
-	  ngrams$ngram <- paste(ngrams$start, ngrams$end, sep="_")
+	  lapply(ngrams, function(x) {
+	    x[,ngram:=paste(start,end,sep="_")]
+	    x[,start:=NULL]
+	    x[,end:=NULL]})
+	} else {
+	  lapply(ngrams, function(x) {
+	    x[,ngram:=start]
+	    x[,start:=NULL]})
 	}
-  else {
-    ngrams$ngram <- ngrams$start
-  }
-  ngrams$start <- NULL
-	top <- ngrams[,head(.SD, 8), by=source]
-	sep.plots[[II]] <- ggplot(top, aes(x=ngram, y=count, fill=count)) + geom_bar(stat="identity") + facet_wrap(source~., nrow=3) + coord_flip() + theme(legend.position="none") + labs(x=ngram.str, y="count")
+	top <- lapply(ngrams, function(x) x[1:5,])
 
-	ngrams$source <- NULL
-	if (II > 1) { ngrams$end <- NULL }
+	sep.subplots <- lapply(1:num.sources, function(x) {
+	  ggplot(top[[x]], aes(x=reorder(ngram, count), y=count, fill=count)) + geom_col() + 
+	    scale_y_continuous(labels=function(x) format(x, scientific=FALSE)) + coord_flip() + 
+	    theme(legend.position="none") + labs(x=ngram.str, y="count", title=sources[x]) + 
+	    xlab(NULL) + ylab(NULL)})
+	sep.plots[[II]] <- ggarrange(sep.subplots[[1]], sep.subplots[[2]], sep.subplots[[3]],
+	                             nrow=3)
+
+	ngrams <- Reduce("rbind", ngrams)
+	ngrams[,source:=NULL]
 	ngrams <- ngrams[,.(count=sum(count)), by=ngram]
 	setorder(ngrams, -count, ngram)
 	ngrams <- ngrams[1:20,]
 
-	tot.plots[[II]] <- ggplot(ngrams, aes(x=ngram, y=count, fill=count)) + geom_bar(stat="identity") + coord_flip() + theme(legend.position="none") + labs(x=ngram.str, y="count", title="all sources")
+	tot.plots[[II]] <- ggplot(ngrams, aes(x=reorder(ngram, count), y=count, fill=count)) +
+	  scale_y_continuous(labels=function(x) format(x, scientific=FALSE)) +
+	  geom_bar(stat="identity") + coord_flip() + theme(legend.position="none") + xlab(NULL) +
+	  ylab(NULL) + labs(title="all sources")
 }
 ```
 
@@ -79,6 +91,7 @@ ggarrange(sep.plots[[3]], tot.plots[[3]], ncol=2)
 ```{r echo=FALSE}
 ggarrange(sep.plots[[4]], tot.plots[[4]], ncol=2)
 ```
+
 ## Observations
 
 Though it may be tempting to remove stop words from predictions, from the above graphs, we can see how frequent they are. Therefore, it would be inaccurate to ignore them when predicting words. As can be assumed from these graphs, numbers have been removed since they provide little to no help in predictions; "two weeks later" is just as probable as three, five, or ten weeks later. Including the restriction on ngrams occurring only one time, our datasets are concise and provide a snapshot of natural language to feed the algorithm.
