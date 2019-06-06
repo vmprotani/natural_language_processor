@@ -23,31 +23,24 @@ max.words  <- num.ngrams[length(num.ngrams)]-1
 data <- lapply(ngram.files, fread, sep=",")
 
 # how many words to predict
-num.out <- 20
+num.out <- 3
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
     
-    output$predictions <- renderDataTable({
+    output$top <- renderText({
         r <- run_backoff(input$text, to.predict=num.out)
         
-        output$top <- renderText({
-            r$prediction[1]
-        })
-        
         output$top.str <- renderText({
-            paste("Top prediction (found in ngrams of", r$n[1], " words)")
+            paste("Your next word is...")
         })
         
-        output$all.str <- renderText({
-            paste("Top", num.out, "predictions")
-        })
-        
-        r
-    }, options=NULL)
+        r$prediction[1]
+    })
     
     output$sample.input <- renderText({ "have a great" })
     output$sample.output <- renderText({ "day\t0.287988924\t4" })
+    output$sample.prediction <- renderText({ "day" })
     
 })
 

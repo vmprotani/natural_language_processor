@@ -54,7 +54,7 @@ $$
 
 ## Text Prediction App
 
-The app has a simple interface where the user inputs text and can see the top prediction along with the rest of the top 20 to see what the algorithm can produce.
+The app has a simple interface where the user inputs text and can see the top prediction.
 
 ```{r out.width="750px"}
 knitr::include_graphics("app_sample.png")
