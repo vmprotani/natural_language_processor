@@ -9,13 +9,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE, result=FALSE}
 library(data.table)
 library(ggplot2)
 library(ggpubr)
 n <- 1:4
 sources <- c("blogs", "news", "twitter")
 ```
+
+## Creating Plots from Ngram Data
 
 ```{r}
 sep.plots <- list()
@@ -34,7 +36,7 @@ for (II in n) {
     ngrams$ngram <- ngrams$start
   }
   ngrams$start <- NULL
-	top <- ngrams[,head(.SD, 10), by=source]
+	top <- ngrams[,head(.SD, 8), by=source]
 	sep.plots[[II]] <- ggplot(top, aes(x=ngram, y=count, fill=count)) + geom_bar(stat="identity") + facet_wrap(source~., nrow=3) + coord_flip() + theme(legend.position="none") + labs(x=ngram.str, y="count")
 
 	ngrams$source <- NULL
@@ -49,25 +51,25 @@ for (II in n) {
 
 ## Unigram Analysis
 
-```{r}
+```{r echo=FALSE}
 ggarrange(sep.plots[[1]], tot.plots[[1]], ncol=2)
 ```
 
 ## Bigram Analysis
 
-```{r}
+```{r echo=FALSE}
 ggarrange(sep.plots[[2]], tot.plots[[2]], ncol=2)
 ```
 
 ## Trigram Analysis
 
-```{r}
+```{r echo=FALSE}
 ggarrange(sep.plots[[3]], tot.plots[[3]], ncol=2)
 ```
 
 ## Quadrigram Analysis
 
-```{r}
+```{r echo=FALSE}
 ggarrange(sep.plots[[4]], tot.plots[[4]], ncol=2)
 ```
 
