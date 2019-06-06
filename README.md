@@ -12,13 +12,13 @@ All code used to produce the app can be found in the `src` directory. Here is a 
 
 File | Description
 --- | ---
-[raw_processor.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/raw_processor.R) | Reads the raw text files (English only) and produces ngrams of 1 to 4 words
-[new_explorer.Rmd](https://github.com/vmprotani/natural_language_processor/blob/master/src/new_explorer.Rmd) | Renders plots showing the most important ngrams coerced from the raw text
-[katz_backoff.R](https://github.com/vmprotani/natural_language_processor/blob/master/src/katz_backoff.R) | Defines the functions used to run the Katz Backoff Model algorithm
+[raw_processor.R](https://github.com/vmprotani/text_predictor/blob/master/src/raw_processor.R) | Reads the raw text files (English only) and produces ngrams of 1 to 4 words
+[new_explorer.Rmd](https://github.com/vmprotani/text_predictor/blob/master/src/new_explorer.Rmd) | Renders plots showing the most important ngrams coerced from the raw text
+[katz_backoff.R](https://github.com/vmprotani/text_predictor/blob/master/src/katz_backoff.R) | Defines the functions used to run the Katz Backoff Model algorithm
 
 The rest of the files are from the initial project. Once the files above are tested, the rest will be removed. 
 
-A preliminary analysis of the ngrams from the corpus can be found [here](https://vmprotani.github.io/natural_language_processor/).
+A preliminary analysis of the ngrams from the corpus can be found [here](https://vmprotani.github.io/text_predictor/).
 
 ## Credits
 
