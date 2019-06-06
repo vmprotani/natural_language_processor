@@ -1,0 +1,89 @@
+---
+title: "Natural Language Processing Text Prediction"
+author: "Vince Protani"
+date: "6/5/2019"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r echo=FALSE, warning=FALSE, result=FALSE}
+library(data.table)
+library(png)
+library(grid)
+source("../src/config.R")
+source("../test/test_katz.R")
+ngrams <- lapply(ngram.files, fread, sep=",")
+```
+
+## Introduction
+
+This app implements a stupid Katz back-off algorithm to predict user text given some input. The predictions come from datasets of ngrams ranging from 1 to 4 words. These ngrams were derived from [the corpus provided by Johns Hopkins University and SwiftKey](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip) through Coursera.
+
+This app's emphasis is quickly predicting a word and demonstrating the algorithm rather than to be as accurate as possible for all users.
+
+## Data
+
+The data at the time of publication of this app is roughly 150 MB of ngrams ranging from 1 to 4 words. All ngrams occurring only once are ignored to save memory. In the datasets, information looks like the following for bigrams and quadrigrams:
+
+```{r echo=FALSE}
+head(ngrams[[2]],2)
+head(ngrams[[4]],2)
+```
+
+The beginning of the ngram is stored separately from the last word. Each unique ngram has its count stored as well. All of this information is used to inform the prediction algorithm.
+
+## Katz Backoff Algorithm
+
+This app uses a modified Katz back-off algorithm to enhance speed and enable multiple predictions. This app's algorithm does not consider the "discount" probability introduced in the standard model, and so it does not consider unobserved ngrams when assigning probabilities to predictions.
+
+Further, it substitutes `r 0.4` for the "backoff" probability rather than sacrificing computation time to more accurately scale probabilities of predictions from lesser ngrams. With these modifications, this app's algorithm looks like this:
+
+$$
+P_{bo}(w_{i}|w_{i-n+1}...w_{i-1}w_{i}) = 
+$$
+
+$$
+\begin{cases}
+\frac{C(w_{i-n+1}...w_{i-1}w_{i})}{C(w_{i-n+1}...w_{i-1})} & C(w_{i-n+1}...w_{i-1}w_{i})\geq1 \\
+0.4 \cdot P_{bo}(w_{i}|w_{i-n+2}...w_{i-1}w_{i}) & otherwise \\
+\end{cases}
+$$
+
+## Text Prediction App
+
+The app has a simple interface where the user inputs text and can see the top prediction along with the rest of the top 20 to see what the algorithm can produce.
+
+```{r out.width="750px"}
+knitr::include_graphics("app_sample.png")
+```
+
+Simply type in the text box, hit Submit, and see the prediction. Documentation is available in the app as well.
+
+## Performance Analysis
+
+To get an idea of the app's performance, it has been put through a test set of a few thousand inputs with respective correct next words. The results show the app's accuracy and speed.
+
+```{r echo=FALSE}
+run_tests(3)
+```
+
+When outputting 3 predictions, only 20% of prediction sets had the correct answer, and the average runtime of the prediction was 0.04 seconds. There is a tradeoff here between accuracy and time: an algorithm with fewer ngrams drawn from the data and less computation gives less accurate predictions but does so more quickly. Using more data or using the computations from the Katz back-off model could improve the accuracy but will slow the application down.
+
+## Looking Forward
+
+While this application can efficiently predict text, it sacrifices some accuracy in order to appeal to a general audience. In a different setting - say, on a phone's keyboard - a user could permit the application to collect data from his or her texting history and then include that information in the generic ngrams data the application currently uses. Better yet, the user's text could be the only data used to build up the prediction training set, while maybe relying on a list of stop words. Personalizing the training data could lead to better predictions without costing the user more time.
+
+That is to say, while this application displays one way through which text is predicted, it shows promise for simply transitioning to a more commonplace, marketed text prediction app like those we know and use today. 
+
+## Credits and References
+
+This application was created as part of the capstone in [the Johns Hopkins University's Data Science specialization on Coursera](https://www.coursera.org/specializations/jhu-data-science). [SwiftKey](https://twitter.com/swiftkey?lang=en) partnered in creating this particular assignment.
+
+The application can be accessed [here](). Documentation is available on-site.
+
+The source code and resources for the app can be found [on GitHub](https://github.com/vmprotani/natural_language_processor). There is also a short presentation of exploratory data analysis linked on this page. This repository also includes the test script and test data used to perform analysis on the app.
+
+More information about the Katz back-off model can be found [here](https://en.wikipedia.org/wiki/Katz%27s_back-off_model).
