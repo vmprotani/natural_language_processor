@@ -1,7 +1,7 @@
 library(data.table)
 
 # load common variables
-source("../config.R")
+source("../src/config.R")
 rm(sources, tidy.files, num.tidy.files)
 
 # configure global variables
@@ -71,7 +71,7 @@ find_in_ngrams <- function(input, n, num.predictions, prev.predictions=NA, backo
       # search for more predictions in (n-1)grams if the number needed was not met
       if (NROW(predictions) != num.predictions) {
         current.predictions <- c(predictions$prediction, prev.predictions)
-        more.predictions <- find_in_ngrams(backoff.input, n-1, num.predictions-NROW(predictions), current.predictions)
+        more.predictions <- find_in_ngrams(backoff.input, n-1, num.predictions-NROW(predictions), current.predictions, backoff.prob)
         
         # continue if predictions were found in the (n-1)grams
         if (sum(is.na(more.predictions)) == 0) {
@@ -85,7 +85,7 @@ find_in_ngrams <- function(input, n, num.predictions, prev.predictions=NA, backo
     }
     # backoff if no matching ngrams are found
     else {
-      predictions <- find_in_ngrams(backoff.input, n-1, num.predictions, prev.predictions)
+      predictions <- find_in_ngrams(backoff.input, n-1, num.predictions, prev.predictions, backoff.prob)
       
       # use backoff probability if any (n-1)grams were found
       if (sum(is.na(predictions)) == 0) {

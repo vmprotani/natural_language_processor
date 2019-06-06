@@ -12,4 +12,4 @@ tidy.files <- paste0("../tidy_data/en_US.", rep(sources, each=4), ".",
                     rep(num.ngrams, 3), "grams.txt")
 
 # number of ngram files separated by source
-num.tidy.files <- length(exp.files)
+num.tidy.files <- length(tidy.files)
