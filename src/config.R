@@ -2,7 +2,7 @@
 num.ngrams <- 1:4
 
 # location of ngram files
-ngram.files <- paste0("../ngrams/en_US.", num.ngrams, "grams.txt")
+ngram.files <- paste0("../src/text_predictor/ngrams/en_US.", num.ngrams, "grams.txt")
 
 # sources used to create the corpus
 sources <- c("blogs", "news", "twitter")
