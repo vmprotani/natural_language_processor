@@ -8,3 +8,5 @@ rsconnect/
 profanity_data/
 *.txt
 backup/
+*.PNG
+*.html
